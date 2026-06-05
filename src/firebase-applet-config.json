@@ -1,0 +1,9 @@
+{
+  "apiKey": "AIzaSyCcwnrlDjdZnYvfeovq6OgZeLkCPJo5DHI",
+  "authDomain": "mon-scanner-tickets.firebaseapp.com",
+  "projectId": "mon-scanner-tickets",
+  "storageBucket": "mon-scanner-tickets.firebasestorage.app",
+  "messagingSenderId": "304957489006",
+  "appId": "1:304957489006:web:c6cc35b7fab84a80220b7f",
+  "firestoreDatabaseId": "(default)"
+}

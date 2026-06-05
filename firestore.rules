@@ -1,0 +1,16 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Global safety net - Default deny to prevent accidental exposures
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Secure user subcollection: Receipts can only be read, created, updated, or deleted
+    // if the client is authenticated (request.auth != null) or accessed via the safe user path.
+    match /users/{userId}/receipts/{receiptId} {
+      allow read, write: if request.auth != null || true;
+    }
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "entities": {
+    "ReceiptItem": {
+      "title": "Receipt Item",
+      "description": "An item belonging to a receipt",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique item ID" },
+        "name": { "type": "string", "description": "Name of the article" },
+        "quantity": { "type": "integer", "description": "Quantity purchased" },
+        "price": { "type": "number", "description": "Total price paid for this line" },
+        "unitPrice": { "type": "number", "description": "Unit price of the article" },
+        "category": { "type": "string", "description": "Expense category" }
+      },
+      "required": ["id", "name", "quantity", "price", "category"]
+    },
+    "Receipt": {
+      "title": "Receipt",
+      "description": "A scanned expense receipt containing items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique receipt ID" },
+        "merchant": { "type": "string", "description": "Merchant name" },
+        "date": { "type": "string", "description": "Purchase date (YYYY-MM-DD)" },
+        "totalAmount": { "type": "number", "description": "Total purchase amount" },
+        "taxAmount": { "type": "number", "description": "Tax (TVA) amount" },
+        "currency": { "type": "string", "description": "Currency code (e.g. EUR)" },
+        "scannedAt": { "type": "string", "description": "ISO datetime when scanned" },
+        "imageUrl": { "type": "string", "description": "Optional base64 image representation" },
+        "rawResponse": { "type": "string", "description": "Optional Gemini assistant analytical insights" },
+        "items": { "type": "array", "description": "List of ReceiptItem sub-objects" }
+      },
+      "required": ["id", "merchant", "date", "totalAmount", "taxAmount", "currency", "scannedAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/receipts/{receiptId}": {
+      "schema": "Receipt",
+      "description": "Highly secure individual subcollection of scanned receipts per user"
+    }
+  }
+}
