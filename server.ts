@@ -8,7 +8,7 @@ import { Resend } from 'resend';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Set up JSON body parser with increased limit for base64 image strings
 app.use(express.json({ limit: '12mb' }));
@@ -120,7 +120,7 @@ app.post('/api/auth/otp/send', async (req, res) => {
             <span style="font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #10b981;">${code}</span>
           </div>
           <p style="color: #64748b; font-size: 12px; line-height: 1.5; text-align: center; margin-bottom: 0;">
-            Ce code est strictly unique et confidentiel. Il est valable pendant 10 minutes.<br>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
+            Ce code est strictement unique et confidentiel. Il est valable pendant 10 minutes.<br>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
           </p>
         </div>
       `,
@@ -406,8 +406,9 @@ async function bootstrap() {
     console.log('Serving compiled static production files from /dist.');
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Serveur démarré avec succès sur http://localhost:${PORT}`);
+  const HOST = process.env.IP || '::';
+  app.listen(PORT, HOST, () => {
+    console.log(`Serveur démarré avec succès sur http://[${HOST}]:${PORT}`);
   });
 }
 
