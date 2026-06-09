@@ -2,7 +2,6 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
-import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import { Resend } from "resend";
 
@@ -313,7 +312,8 @@ Pour chaque article réellement répertorié sur l'image :
 async function bootstrap() {
   if (process.env.NODE_ENV !== "production") {
     // Development Mode
-    const vite = await createViteServer({
+    const { createServer } = await import("vite");
+    const vite = await createServer({
       server: { middlewareMode: true },
       appType: "spa",
     });
@@ -332,9 +332,9 @@ async function bootstrap() {
     console.log(`Serving compiled static production files from: ${distPath}`);
   }
 
-  const HOST = process.env.IP || "::";
+  const HOST = process.env.IP || "0.0.0.0";
   app.listen(PORT, HOST, () => {
-    console.log(`Serveur démarré avec succès sur http://[${HOST}]:${PORT}`);
+    console.log(`Serveur démarré avec succès sur http://${HOST}:${PORT}`);
   });
 }
 
