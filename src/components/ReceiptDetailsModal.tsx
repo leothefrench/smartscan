@@ -1,7 +1,16 @@
-import React, { useState } from "react";
-import { Receipt, ReceiptItem, ReceiptCategory } from "../types";
-import { CATEGORY_COLORS } from "../data/demoReceipts";
-import { X, Trash2, Calendar, Store, CreditCard, Sparkles, Plus, Check } from "lucide-react";
+import React, { useState } from 'react';
+import { Receipt, ReceiptItem, ReceiptCategory } from '../types';
+import { CATEGORY_COLORS } from '../data/demoReceipts';
+import {
+  X,
+  Trash2,
+  Calendar,
+  Store,
+  CreditCard,
+  Sparkles,
+  Plus,
+  Check,
+} from 'lucide-react';
 
 interface ReceiptDetailsModalProps {
   receipt: Receipt;
@@ -14,7 +23,7 @@ export default function ReceiptDetailsModal({
   receipt,
   onClose,
   onDelete,
-  onUpdate
+  onUpdate,
 }: ReceiptDetailsModalProps) {
   const [editableMerchant, setEditableMerchant] = useState(receipt.merchant);
   const [editableDate, setEditableDate] = useState(receipt.date);
@@ -47,7 +56,7 @@ export default function ReceiptDetailsModal({
       merchant: editableMerchant,
       date: editableDate,
       items: items,
-      totalAmount: Number(newTotal.toFixed(2))
+      totalAmount: Number(newTotal.toFixed(2)),
     };
     onUpdate(updatedReceipt);
     setIsSaved(true);
@@ -59,26 +68,28 @@ export default function ReceiptDetailsModal({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
       style={{ margin: 0 }}
       id="receipt-modal-backdrop"
     >
-      <div 
+      <div
         className="bg-zinc-900 rounded-3xl shadow-2xl border border-zinc-800 w-full max-w-2xl max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col animate-slideUp text-white"
         id="receipt-modal-container"
       >
         {/* Header decoration */}
-        <div className="p-4 sm:p-6 bg-zinc-950 border-b border-zinc-850 flex items-center justify-between gap-4">
+        <div className="p-4 sm:p-6 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between gap-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-2">
             <span className="text-[10px] font-extrabold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full uppercase tracking-wider w-fit shrink-0">
               Analyse IA Complétée
             </span>
             {receipt.imageUrl && (
-              <span className="text-[10px] sm:text-xs text-zinc-400 font-medium font-mono truncate max-w-[180px] sm:max-w-none">Image conservée localement</span>
+              <span className="text-[10px] sm:text-xs text-zinc-400 font-medium font-mono truncate max-w-[180px] sm:max-w-none">
+                Image conservée localement
+              </span>
             )}
           </div>
-          <button 
+          <button
             type="button"
             onClick={onClose}
             className="p-1.5 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0"
@@ -92,11 +103,13 @@ export default function ReceiptDetailsModal({
           {/* Quick Info Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/60">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Nom du Commerçant</label>
-              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border border-zinc-805 rounded-xl mt-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                Nom du Commerçant
+              </label>
+              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl mt-1">
                 <Store size={15} className="text-emerald-400" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={editableMerchant}
                   onChange={(e) => setEditableMerchant(e.target.value)}
                   className="w-full text-sm font-semibold bg-transparent border-none focus:outline-none p-0 text-white"
@@ -105,11 +118,13 @@ export default function ReceiptDetailsModal({
             </div>
 
             <div className="space-y-1 bg-zinc-950 p-4 rounded-2xl border border-zinc-800/60">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Date de l'Achat</label>
-              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border border-zinc-850 rounded-xl mt-1">
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                Date de l'Achat
+              </label>
+              <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-xl mt-1">
                 <Calendar size={15} className="text-emerald-400" />
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={editableDate}
                   onChange={(e) => setEditableDate(e.target.value)}
                   className="w-full text-sm font-semibold bg-transparent border-none focus:outline-none p-0 text-white [color-scheme:dark]"
@@ -126,7 +141,9 @@ export default function ReceiptDetailsModal({
                   <Sparkles size={16} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-emerald-300 block mb-0.5">Note de l'Assistant Gemini IA</span>
+                  <span className="text-xs font-bold text-emerald-300 block mb-0.5">
+                    Note de l'Assistant Gemini IA
+                  </span>
                   <p className="text-xs text-zinc-300 leading-relaxed italic">
                     "{receipt.rawResponse}"
                   </p>
@@ -138,26 +155,38 @@ export default function ReceiptDetailsModal({
           {/* Physical Receipt Simulation */}
           <div className="border border-zinc-800 rounded-2xl bg-zinc-950 p-5 space-y-4">
             <div className="text-center pb-4 border-b border-dashed border-zinc-800">
-              <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider">Simulateur de ticket de caisse</div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tight mt-1">{editableMerchant}</h3>
-              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">DATE: {editableDate} — DEV: {receipt.currency}</p>
+              <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider">
+                Simulateur de ticket de caisse
+              </div>
+              <h3 className="text-lg font-black text-white uppercase tracking-tight mt-1">
+                {editableMerchant}
+              </h3>
+              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                DATE: {editableDate} — DEV: {receipt.currency}
+              </p>
             </div>
 
             {/* List of items */}
             <div className="space-y-3 font-mono">
               {items.length === 0 ? (
-                <p className="text-xs text-zinc-500 italic text-center py-4">Aucun article dans ce ticket</p>
+                <p className="text-xs text-zinc-500 italic text-center py-4">
+                  Aucun article dans ce ticket
+                </p>
               ) : (
                 items.map((item) => {
                   return (
-                    <div 
-                      key={item.id} 
+                    <div
+                      key={item.id}
                       className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-zinc-900 text-xs text-zinc-300 group"
                     >
                       <div className="flex-1">
-                        <div className="font-semibold text-white">{item.name}</div>
+                        <div className="font-semibold text-white">
+                          {item.name}
+                        </div>
                         <div className="text-[10px] text-zinc-500 mt-0.5">
-                          Quantité : {item.quantity} × {(item.price / item.quantity).toFixed(2)} {receipt.currency}
+                          Quantité : {item.quantity} ×{' '}
+                          {(item.price / item.quantity).toFixed(2)}{' '}
+                          {receipt.currency}
                         </div>
                       </div>
 
@@ -165,7 +194,12 @@ export default function ReceiptDetailsModal({
                       <div className="flex items-center gap-2 shrink-0">
                         <select
                           value={item.category}
-                          onChange={(e) => handleCategoryChange(item.id, e.target.value as ReceiptCategory)}
+                          onChange={(e) =>
+                            handleCategoryChange(
+                              item.id,
+                              e.target.value as ReceiptCategory,
+                            )
+                          }
                           className="text-[10px] font-bold px-2.5 py-1.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-200 outline-none cursor-pointer hover:border-zinc-700"
                         >
                           {Object.keys(CATEGORY_COLORS).map((catName) => (
@@ -200,21 +234,25 @@ export default function ReceiptDetailsModal({
                 {receipt.taxAmount > 0 && (
                   <div className="flex justify-between">
                     <span>Montant TVA :</span>
-                    <span>{receipt.taxAmount.toFixed(2)} {receipt.currency}</span>
+                    <span>
+                      {receipt.taxAmount.toFixed(2)} {receipt.currency}
+                    </span>
                   </div>
                 )}
                 <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-zinc-900">
                   <span>Montant Total :</span>
                   <span className="text-emerald-400 font-extrabold">
-                    {items.reduce((sum, item) => sum + item.price, 0).toLocaleString("fr-FR", {
-                      style: "currency",
-                      currency: receipt.currency
-                    })}
+                    {items
+                      .reduce((sum, item) => sum + item.price, 0)
+                      .toLocaleString('fr-FR', {
+                        style: 'currency',
+                        currency: receipt.currency,
+                      })}
                   </span>
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-center text-[9px] text-zinc-600 font-mono text-center pt-2 select-none uppercase tracking-wide">
               **************** NUMÉRISATION SOUVERAINE ****************
             </div>
@@ -222,7 +260,7 @@ export default function ReceiptDetailsModal({
         </div>
 
         {/* Modal Action Controls Footer */}
-        <div className="p-4 sm:p-6 bg-zinc-950 border-t border-zinc-850 flex flex-col-reverse sm:flex-row gap-3 sm:items-center sm:justify-between">
+        <div className="p-4 sm:p-6 bg-zinc-950 border-t border-zinc-800 flex flex-col-reverse sm:flex-row gap-3 sm:items-center sm:justify-between">
           <button
             type="button"
             onClick={() => {
@@ -238,7 +276,7 @@ export default function ReceiptDetailsModal({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-850 rounded-xl transition-all font-semibold text-xs cursor-pointer text-center"
+              className="px-4 py-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 rounded-xl transition-all font-semibold text-xs cursor-pointer text-center"
             >
               Fermer
             </button>
@@ -246,14 +284,15 @@ export default function ReceiptDetailsModal({
               type="button"
               onClick={handleSave}
               className={`flex items-center justify-center gap-1 px-4 py-3 text-black font-semibold text-xs rounded-xl shadow-sm transition-all duration-300 cursor-pointer ${
-                isSaved 
-                  ? "bg-emerald-500 hover:bg-emerald-600 scale-95" 
-                  : "bg-white hover:bg-zinc-100"
+                isSaved
+                  ? 'bg-emerald-500 hover:bg-emerald-600 scale-95'
+                  : 'bg-white hover:bg-zinc-100'
               }`}
             >
               {isSaved ? (
                 <>
-                  <Check size={14} className="animate-pulse" /> Modifié avec succès !
+                  <Check size={14} className="animate-pulse" /> Modifié avec
+                  succès !
                 </>
               ) : (
                 <>Enregistrer les modifications</>
