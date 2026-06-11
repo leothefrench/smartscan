@@ -3,7 +3,6 @@ import path from "path";
 import dotenv from "dotenv";
 import fs from "fs";
 import { GoogleGenAI, Type } from "@google/genai";
-import { Resend } from "resend";
 
 dotenv.config();
 
@@ -76,41 +75,58 @@ app.post("/api/auth/otp/send", async (req, res) => {
       return;
     }
 
-    // Try to send real email with Resend
-    console.log("[SmartReceipt DEBUG] Tentative d'envoi d'un vrai email via Resend...");
-    const resend = new Resend(apiKey);
-    
-    const sendResult = await resend.emails.send({
-      from: "SmartReceipt <onboarding@resend.dev>",
-      to: [emailKey],
-      subject: "Votre code de sécurité SmartReceipt",
-      html: `
-        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #fafafa;">
-          <div style="text-align: center; margin-bottom: 20px;">
-            <span style="font-size: 24px; font-weight: 800; color: #10b981; letter-spacing: -0.5px;">SmartReceipt</span>
-          </div>
-          <h2 style="color: #0f172a; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Code de sécurité temporaire</h2>
-          <p style="color: #475569; font-size: 14px; line-height: 1.5; text-align: center;">
-            Bonjour,<br>Utilisez le code suivant pour valider votre connexion et accéder à vos données de tickets de caisse :
-          </p>
-          <div style="background-color: #0f172a; border-radius: 12px; padding: 16px; text-align: center; margin: 24px 0;">
-            <span style="font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #10b981;">${code}</span>
-          </div>
-          <p style="color: #64748b; font-size: 12px; line-height: 1.5; text-align: center; margin-bottom: 0;">
-            Ce code est strictement unique et confidentiel. Il est valable pendant 10 minutes.<br>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
-          </p>
-        </div>
-      `,
-    });
+    // Try to send real email with Resend via lightweight direct HTTP request with a 4-second timeout
+    console.log("[SmartReceipt DEBUG] Tentative d'envoi d'un vrai email via l'API Resend...");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-    console.log("[SmartReceipt DEBUG] Résultat retourné par Resend API :", sendResult);
-    
-    if (sendResult.error) {
-      throw new Error(`Erreur Resend: ${JSON.stringify(sendResult.error)}`);
+    try {
+      const sendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          from: "SmartReceipt <onboarding@resend.dev>",
+          to: [emailKey],
+          subject: "Votre code de sécurité SmartReceipt",
+          html: `
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #fafafa;">
+              <div style="text-align: center; margin-bottom: 20px;">
+                <span style="font-size: 24px; font-weight: 800; color: #10b981; letter-spacing: -0.5px;">SmartReceipt</span>
+              </div>
+              <h2 style="color: #0f172a; margin-top: 0; font-size: 18px; font-weight: 700; text-align: center;">Code de sécurité temporaire</h2>
+              <p style="color: #475569; font-size: 14px; line-height: 1.5; text-align: center;">
+                Bonjour,<br>Utilisez le code suivant pour valider votre connexion et accéder à vos données de tickets de caisse :
+              </p>
+              <div style="background-color: #0f172a; border-radius: 12px; padding: 16px; text-align: center; margin: 24px 0;">
+                <span style="font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #10b981;">${code}</span>
+              </div>
+              <p style="color: #64748b; font-size: 12px; line-height: 1.5; text-align: center; margin-bottom: 0;">
+                Ce code est strictement unique et confidentiel. Il est valable pendant 10 minutes.<br>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
+              </p>
+            </div>
+          `
+        }),
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      const sendResult = await sendResponse.json() as any;
+      console.log("[SmartReceipt DEBUG] Résultat retourné par Resend API :", sendResult);
+      
+      if (!sendResponse.ok || sendResult.error) {
+        throw new Error(`Erreur Resend: ${JSON.stringify(sendResult.error || sendResult)}`);
+      }
+
+      console.log(`[SmartReceipt] Code envoyé par vrai e-mail Resend à ${emailKey}`);
+      res.json({ success: true, isSimulated: false });
+    } catch (fetchErr: any) {
+      clearTimeout(timeoutId);
+      throw fetchErr;
     }
-
-    console.log(`[SmartReceipt] Code envoyé par vrai e-mail Resend à ${emailKey}`);
-    res.json({ success: true, isSimulated: false });
 
   } catch (error: any) {
     console.error("!!! [SmartReceipt DEBUG] Erreur critique d'envoi OTP avec Resend :", error);
@@ -310,6 +326,12 @@ Pour chaque article réellement répertorié sur l'image :
 
 // Configure Vite integration for SPA fallback & asset serving
 async function bootstrap() {
+  // En environnement Vercel Serverless, on ne lance pas app.listen ni le serveur de fichiers statiques (Vercel gère le CDN et l'écoute)
+  if (process.env.VERCEL) {
+    console.log("Environnement Vercel détecté : initialisation sans app.listen ni fichiers statiques.");
+    return;
+  }
+
   if (process.env.NODE_ENV !== "production") {
     // Development Mode
     const { createServer } = await import("vite");
@@ -337,6 +359,8 @@ async function bootstrap() {
     console.log(`Serveur démarré avec succès sur http://${HOST}:${PORT}`);
   });
 }
+
+export { app };
 
 bootstrap().catch((err) => {
   console.error("Échec du démarrage de l'application:", err);
