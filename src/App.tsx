@@ -267,28 +267,29 @@ export default function App() {
       id="app-root"
     >
       {/* Elegantly Polished Navbar */}
-      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative p-2 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-950/40">
-            <Scan size={20} className="relative z-10" />
+      <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className="relative p-1.5 sm:p-2 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-950/40 shrink-0">
+            <Scan size={18} className="relative z-10 sm:hidden" />
+            <Scan size={20} className="relative z-10 hidden sm:block" />
             <div className="absolute inset-x-0 bottom-0 top-0 bg-emerald-400 rounded-xl blur-md opacity-25" />
           </div>
           <div>
-            <h1 className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5 leading-none">
+            <h1 className="text-xs sm:text-sm font-bold text-white tracking-tight flex items-center gap-1.5 leading-none">
               SmartScan{' '}
-              <span className="text-[9px] bg-zinc-900 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-medium border border-zinc-800">
+              <span className="hidden sm:inline-block text-[9px] bg-zinc-900 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-medium border border-zinc-800">
                 PRO-SECURE
               </span>
             </h1>
-            <span className="text-[10px] text-zinc-400 font-medium">
+            <span className="hidden md:inline-block text-[10px] text-zinc-400 font-medium">
               Gestionnaire intelligent & ultra-privé de tickets
             </span>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-3">
           {currentUserEmail && (
-            <div className="hidden md:flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 rounded-xl border border-zinc-800">
+            <div className="hidden lg:flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 rounded-xl border border-zinc-800">
               <User size={13} className="text-zinc-400" />
               <span className="text-xs font-mono text-zinc-300 font-semibold">
                 {currentUserEmail}
@@ -298,33 +299,33 @@ export default function App() {
 
           {IS_FIREBASE_REAL ? (
             <div
-              className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/30 border border-emerald-900/50 px-3 py-1.5 rounded-full"
+              className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-emerald-400 font-semibold bg-emerald-950/30 border border-emerald-900/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full"
               title="Base de données Cloud active"
             >
-              <Cloud size={14} className="animate-pulse text-emerald-400" />
-              Cloud Synced
+              <Cloud size={13} className="animate-pulse text-emerald-400" />
+              <span className="hidden sm:inline">Cloud Synced</span>
             </div>
           ) : (
             <div
-              className="flex items-center gap-1.5 text-xs text-zinc-400 font-semibold bg-zinc-900 border border-zinc-800 px-3 py-1.5 rounded-full"
+              className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-zinc-400 font-semibold bg-zinc-900 border border-zinc-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full"
               title="Sauvegarde locale chiffrée. Connectez Firebase pour synchroniser."
             >
-              <CloudOff size={14} className="text-zinc-500" />
-              Local Securisé
+              <CloudOff size={13} className="text-zinc-500" />
+              <span className="hidden sm:inline">Local Sécurisé</span>
             </div>
           )}
 
           <button
             type="button"
             onClick={() => setShowQrCode(true)}
-            className="flex items-center gap-1.5 text-xs text-amber-400 font-bold bg-amber-950/30 border border-amber-900/50 px-3 py-1.5 rounded-full hover:bg-amber-950/50 transition-all cursor-pointer"
+            className="hidden md:flex items-center gap-1.5 text-xs text-amber-400 font-bold bg-amber-950/30 border border-amber-900/50 px-3 py-1.5 rounded-full hover:bg-amber-950/50 transition-all cursor-pointer"
             title="Ouvrir sur votre smartphone Redmi"
           >
             <Smartphone size={13} />
             Mobile Scan
           </button>
 
-          <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/30 border border-emerald-900/50 px-3 py-1.5 rounded-full">
+          <div className="hidden sm:flex items-center gap-1.5 text-xs text-emerald-400 font-semibold bg-emerald-950/30 border border-emerald-900/50 px-3 py-1.5 rounded-full">
             <ShieldCheck size={14} />
             Conforme RGPD
           </div>
@@ -332,10 +333,11 @@ export default function App() {
           <button
             type="button"
             onClick={handleLogout}
-            className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-950/30 border border-transparent hover:border-red-900/50 rounded-xl transition-all cursor-pointer"
+            className="p-1.5 sm:p-2 text-zinc-400 hover:text-red-400 hover:bg-red-950/30 border border-transparent hover:border-red-900/50 rounded-xl transition-all cursor-pointer shrink-0"
             title="Se déconnecter"
           >
-            <LogOut size={16} />
+            <LogOut size={15} className="sm:hidden" />
+            <LogOut size={16} className="hidden sm:block" />
           </button>
         </div>
       </header>
@@ -468,17 +470,21 @@ export default function App() {
               <div className="flex items-start gap-1.5">
                 <span className="text-amber-400 font-bold">1.</span>
                 <span>
-                  Ouvrez l'application <strong>Appareil Photo</strong> or le
+                  Ouvrez l'application <strong>Appareil Photo</strong> ou le
                   raccourci <strong>Scanner</strong> de votre Xiaomi.
                 </span>
               </div>
               <div className="flex items-start gap-1.5">
                 <span className="text-amber-400 font-bold">2.</span>
-                <span>Visez le code QR ci-dessus.</span>
+                <span>
+                  Visez le code QR ci-dessus avec l'objectif de votre téléphone.
+                </span>
               </div>
               <div className="flex items-start gap-1.5">
                 <span className="text-amber-400 font-bold">3.</span>
-                <span>Cliquez sur le lien qui apparaît à l'écran !</span>
+                <span>
+                  Cliquez sur le lien de redirection qui apparaît à l'écran !
+                </span>
               </div>
             </div>
 
