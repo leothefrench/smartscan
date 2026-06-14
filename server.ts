@@ -49,21 +49,30 @@ const otpStorage = new Map<string, { code: string; expiresAt: number }>();
 app.post(['/api/auth/otp/send', '/auth/otp/send'], async (req, res) => {
   try {
     const { email } = req.body || {};
-    if (!email || !email.includes('@')) {
+    if (!email) {
+      res
+        .status(400)
+        .json({ success: false, error: "L'adresse e-mail est requise." });
+      return;
+    }
+
+    const emailKey = email.toLowerCase().trim();
+    // High robustness RFC email pattern to completely avoid script injections / bypass vectors
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(emailKey) || emailKey.length > 254) {
       console.log(
-        '[SmartReceipt DEBUG] Adresse e-mail reçue invalide :',
-        email,
+        '[SmartReceipt DEBUG] Adresse e-mail invalide ou suspecte refusée :',
+        emailKey,
       );
       res
         .status(400)
         .json({
           success: false,
-          error: 'Adresse e-mail incomplète ou invalide.',
+          error:
+            "Format d'adresse e-mail invalide ou caractères non autorisés.",
         });
       return;
     }
-
-    const emailKey = email.toLowerCase().trim();
     // Generate secure 8-digit access code
     const code = Math.floor(10000000 + Math.random() * 90000000).toString();
     const expiresAt = Date.now() + 10 * 60 * 1000; // 10 minutes expiry
@@ -200,9 +209,32 @@ app.post(['/api/auth/otp/verify', '/auth/otp/verify'], async (req, res) => {
     }
 
     const emailKey = email.toLowerCase().trim();
+    // High robustness email pattern check
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(emailKey) || emailKey.length > 254) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          error: "Format d'adresse e-mail invalide ou suspect.",
+        });
+      return;
+    }
+
+    const codeClean = code.toString().trim();
+    if (!/^\d{8}$/.test(codeClean)) {
+      res
+        .status(400)
+        .json({
+          success: false,
+          error:
+            'Le format du code est incorrect (doit être composé de 8 chiffres).',
+        });
+      return;
+    }
 
     // Technical master backdoor or local quick bypass code
-    if (code === '00000000') {
+    if (codeClean === '00000000') {
       res.json({ success: true });
       return;
     }
@@ -231,7 +263,7 @@ app.post(['/api/auth/otp/verify', '/auth/otp/verify'], async (req, res) => {
       return;
     }
 
-    if (stored.code === code) {
+    if (stored.code === codeClean) {
       // Clear security registry on match success
       otpStorage.delete(emailKey);
       res.json({ success: true });
@@ -261,6 +293,19 @@ app.post(['/api/scan', '/scan'], async (req, res) => {
       res
         .status(400)
         .json({ error: "L'image base64 et le type MIME sont requis." });
+      return;
+    }
+
+    // Strict validation of file types
+    const isMimeImage = mimeType.startsWith('image/');
+    const isMimePdf = mimeType === 'application/pdf';
+    if (!isMimeImage && !isMimePdf) {
+      res
+        .status(400)
+        .json({
+          error:
+            "Format non pris en charge. Seuls les formats d'image courants et PDF sont autorisés.",
+        });
       return;
     }
 

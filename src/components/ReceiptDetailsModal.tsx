@@ -11,6 +11,7 @@ import {
   Plus,
   Check,
 } from 'lucide-react';
+import { sanitizeInput } from '../utils/security';
 
 interface ReceiptDetailsModalProps {
   receipt: Receipt;
@@ -51,11 +52,20 @@ export default function ReceiptDetailsModal({
   const handleSave = () => {
     // Recompute total based on item pricing
     const newTotal = items.reduce((sum, item) => sum + item.price, 0);
+
+    // Defensive sanitization of all edits
+    const sanitizedMerchant =
+      sanitizeInput(editableMerchant) || 'Magasin Modifié';
+    const sanitizedItems = items.map((item) => ({
+      ...item,
+      name: sanitizeInput(item.name) || 'Article',
+    }));
+
     const updatedReceipt: Receipt = {
       ...receipt,
-      merchant: editableMerchant,
+      merchant: sanitizedMerchant,
       date: editableDate,
-      items: items,
+      items: sanitizedItems,
       totalAmount: Number(newTotal.toFixed(2)),
     };
     onUpdate(updatedReceipt);

@@ -122,7 +122,7 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
         <div className="pt-4 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
           <span>Tendance :</span>
           <span className="flex items-center gap-1 font-semibold text-emerald-400">
-            <TrendingUp size={14} /> Souveraineté de calcul
+            <TrendingUp size={14} /> Analyse en temps réel
           </span>
         </div>
       </div>

@@ -5,17 +5,17 @@ export default function PrivacyBanner() {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
-    <div 
+    <div
       className="bg-zinc-900 rounded-3xl border border-zinc-800 p-5 mb-6 transition-all duration-300"
       id="privacy-gdpr-banner"
     >
-      <div 
+      <div
         className="flex items-center justify-between cursor-pointer focus:outline-none"
         onClick={() => setIsOpen(!isOpen)}
         role="button"
         tabIndex={0}
         onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
+          if (e.key === 'Enter' || e.key === ' ') {
             setIsOpen(!isOpen);
           }
         }}
@@ -32,25 +32,29 @@ export default function PrivacyBanner() {
               </span>
             </h3>
             <p className="text-xs text-zinc-400 mt-0.5">
-              Découvrez comment nous garantissons le respect absolu de vos données personnelles et de vos tickets.
+              Découvrez comment nous garantissons le respect absolu de vos
+              données personnelles et de vos tickets.
             </p>
           </div>
         </div>
-        <button 
+        <button
           type="button"
           onClick={(e) => {
             e.stopPropagation();
             setIsOpen(!isOpen);
           }}
           className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition cursor-pointer"
-          aria-label={isOpen ? "Fermer les détails" : "Ouvrir les détails"}
+          aria-label={isOpen ? 'Fermer les détails' : 'Ouvrir les détails'}
         >
           {isOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
         </button>
       </div>
 
       {isOpen && (
-        <div className="mt-4 pt-4 border-t border-zinc-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs animate-fadeIn" id="privacy-details">
+        <div
+          className="mt-4 pt-4 border-t border-zinc-800 grid grid-cols-1 md:grid-cols-3 gap-4 text-xs animate-fadeIn"
+          id="privacy-details"
+        >
           {/* Pillar 1: No training */}
           <div className="space-y-1.5 p-4 bg-zinc-950 rounded-2xl border border-zinc-800/60">
             <div className="flex items-center gap-1.5 font-bold text-white">
@@ -58,7 +62,9 @@ export default function PrivacyBanner() {
               Pas d'entraînement d'IA
             </div>
             <p className="text-zinc-400 text-[11px] leading-relaxed">
-              Vos photos de tickets ne sont <strong>pas utilisées</strong> pour entraîner des intelligences artificielles ou des modèles publics. Elles servent uniquement à l'analyse instantanée de votre ticket.
+              Vos photos de tickets ne sont <strong>pas utilisées</strong> pour
+              entraîner des intelligences artificielles ou des modèles publics.
+              Elles servent uniquement à l'analyse instantanée de votre ticket.
             </p>
           </div>
 
@@ -69,9 +75,15 @@ export default function PrivacyBanner() {
               Stockage local 100% privé
             </div>
             <p className="text-zinc-400 text-[11px] leading-relaxed">
-              Vos données budgétaires restent enregistrées localement dans votre propre appareil.
+              Vos données budgétaires restent enregistrées localement dans votre
+              propre appareil.
               <span className="text-amber-400 font-semibold block mt-1">
-                ⚠️ Si vous effacez les données de votre navigateur, vos tickets seront effacés car nous ne gardons aucune copie en ligne.
+                ⚠️ Mode Invité : Vos données sont locales et perdues en cas de
+                nettoyage du navigateur. Connectez-vous pour lier vos tickets à
+                votre compte (Gmail ou e-mail/OTP) : vos scans seront alors
+                sauvegardés de façon sécurisée sur le Cloud Firestore et
+                totalement protégés contre toute suppression accidentelle de
+                votre appareil.
               </span>
             </p>
           </div>
@@ -83,7 +95,10 @@ export default function PrivacyBanner() {
               Zéro trace sur le serveur
             </div>
             <p className="text-zinc-400 text-[11px] leading-relaxed">
-              La photo du ticket est transmise temporairement et de façon éphémère pour en extraire la liste d'achats, puis elle est <strong>effacée de façon immédiate et définitive</strong> du serveur.
+              La photo du ticket est transmise temporairement et de façon
+              éphémère pour en extraire la liste d'achats, puis elle est{' '}
+              <strong>effacée de façon immédiate et définitive</strong> du
+              serveur.
             </p>
           </div>
         </div>

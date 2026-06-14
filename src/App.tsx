@@ -38,10 +38,14 @@ export default function App() {
 
   const getQrUrl = () => {
     const currentUrl = window.location.href;
-    if (customIp.trim()) {
+    const trimmed = customIp.trim();
+    if (trimmed) {
+      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+        return trimmed;
+      }
       try {
         const urlObj = new URL(currentUrl);
-        let hostWithPort = customIp.trim();
+        let hostWithPort = trimmed;
         if (!hostWithPort.includes(':')) {
           if (urlObj.port) {
             hostWithPort = `${hostWithPort}:${urlObj.port}`;
@@ -297,24 +301,6 @@ export default function App() {
             </div>
           )}
 
-          {IS_FIREBASE_REAL ? (
-            <div
-              className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-emerald-400 font-semibold bg-emerald-950/30 border border-emerald-900/50 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full"
-              title="Base de données Cloud active"
-            >
-              <Cloud size={13} className="animate-pulse text-emerald-400" />
-              <span className="hidden sm:inline">Cloud Synced</span>
-            </div>
-          ) : (
-            <div
-              className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-zinc-400 font-semibold bg-zinc-900 border border-zinc-800 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full"
-              title="Sauvegarde locale chiffrée. Connectez Firebase pour synchroniser."
-            >
-              <CloudOff size={13} className="text-zinc-500" />
-              <span className="hidden sm:inline">Local Sécurisé</span>
-            </div>
-          )}
-
           <button
             type="button"
             onClick={() => setShowQrCode(true)}
@@ -437,12 +423,12 @@ export default function App() {
 
               <div className="space-y-1.5 bg-zinc-950 p-3 rounded-2xl border border-zinc-800">
                 <label className="text-[10px] font-bold text-zinc-400 block tracking-tight uppercase">
-                  📡 Ma machine locale (IP locale pc) :
+                  📡 Adresse IP locale ou URL personnalisée :
                 </label>
                 <div className="flex gap-1.5">
                   <input
                     type="text"
-                    placeholder="Ex: 192.168.1.50"
+                    placeholder="Ex: 192.168.1.50 ou https://...vercel.app"
                     value={customIp}
                     onChange={(e) => setCustomIp(e.target.value)}
                     className="flex-1 bg-zinc-900 text-white text-xs border border-zinc-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-500 font-mono"
@@ -457,12 +443,42 @@ export default function App() {
                     </button>
                   )}
                 </div>
-                <p className="text-[9px] text-zinc-500 leading-tight">
-                  Par défaut, l'application utilise l'adresse actuelle. Si vous
-                  êtes sur votre ordinateur (localhost), remplacez par votre IP
-                  locale pour y accéder depuis votre portable connecté au même
-                  Wi-Fi.
-                </p>
+                <div className="text-[9px] text-zinc-500 space-y-1 leading-tight">
+                  <p>
+                    Le QR code par défaut génère{' '}
+                    <code className="text-zinc-400 font-mono">
+                      localhost:3000
+                    </code>
+                    . Comme{' '}
+                    <code className="text-zinc-400 font-mono">localhost</code>{' '}
+                    désigne le Xiaomi lui-même, la page est inaccessible.
+                  </p>
+                  <p className="font-semibold text-zinc-400">
+                    Pour tester sur smartphone :
+                  </p>
+                  <ul className="list-disc list-inside space-y-0.5 text-zinc-500">
+                    <li>
+                      <strong className="text-zinc-400">
+                        Option 1 (Même Wi-Fi) :
+                      </strong>{' '}
+                      Renseignez l'IP locale de votre PC (ex:{' '}
+                      <code className="text-amber-500 font-mono text-[8px]">
+                        192.168.1.XX
+                      </code>
+                      ).
+                    </li>
+                    <li>
+                      <strong className="text-zinc-400">
+                        Option 2 (Tout réseau/4G) :
+                      </strong>{' '}
+                      Collez votre URL de déploiement en ligne{' '}
+                      <span className="text-zinc-400 font-mono font-bold">
+                        Vercel
+                      </span>{' '}
+                      ou l'URL de test ci-dessus !
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
 
