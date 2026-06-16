@@ -1,20 +1,17 @@
-import express from 'express';
-import dotenv from 'dotenv';
-import { GoogleGenAI, Type } from '@google/genai';
-import { initializeApp } from 'firebase/app';
-import {
-  getFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  deleteDoc,
-} from 'firebase/firestore';
-import fs from 'fs';
-import path from 'path';
+import express from "express";
+import dotenv from "dotenv";
+import { GoogleGenAI, Type } from "@google/genai";
+import fs from "fs";
+import path from "path";
 
 dotenv.config();
 
-const app = express();
+const app = reportExpressSetup();
+
+function reportExpressSetup() {
+  const expressApp = express();
+  return expressApp;
+}
 
 // Set up JSON body parser with increased limit for base64 image strings. Avoid hanging on Vercel.
 app.use((req, res, next) => {
@@ -25,13 +22,13 @@ app.use((req, res, next) => {
   }
 
   // Only run express.json parser for HTTP methods that can contain a body.
-  const hasBody = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || '');
+  const hasBody = ["POST", "PUT", "PATCH", "DELETE"].includes(req.method || "");
   if (!hasBody) {
     next();
     return;
   }
 
-  express.json({ limit: '12mb' })(req, res, next);
+  express.json({ limit: "12mb" })(req, res, next);
 });
 
 // Lazy initializer for the Gemini SDK Client
@@ -41,15 +38,13 @@ function getGeminiClient(): GoogleGenAI {
   if (!aiClient) {
     const key = process.env.GEMINI_API_KEY;
     if (!key) {
-      throw new Error(
-        "La clé d'API GEMINI_API_KEY est requise dans l'environnement.",
-      );
+      throw new Error("La clé d'API GEMINI_API_KEY est requise dans l'environnement.");
     }
     aiClient = new GoogleGenAI({
       apiKey: key,
       httpOptions: {
         headers: {
-          'User-Agent': 'aistudio-build',
+          "User-Agent": "aistudio-build",
         },
       },
     });
@@ -57,97 +52,113 @@ function getGeminiClient(): GoogleGenAI {
   return aiClient;
 }
 
-// Initialize Firebase App and Firestore for durable OTP storage (essential for Vercel stateless Serverless environments)
-let firestoreDb: any = null;
+// Initialize Firebase / Firestore parameters for lightweight REST OTP storage (essential for Vercel stateless Serverless environments)
+let firebaseProjectId = "";
+let firebaseApiKey = "";
+
 try {
-  const configPath = path.join(process.cwd(), 'firebase-applet-config.json');
+  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
   if (fs.existsSync(configPath)) {
-    const firebaseConfig = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
-    const firebaseApp = initializeApp(firebaseConfig);
-    firestoreDb = getFirestore(firebaseApp);
-    console.log(
-      '[SmartReceipt] Firebase/Firestore backend client initialized successfully.',
-    );
+    const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+    firebaseProjectId = firebaseConfig.projectId || "";
+    firebaseApiKey = firebaseConfig.apiKey || "";
+    console.log("[SmartReceipt] Firebase REST configuration loaded successfully. Project ID:", firebaseProjectId);
   } else {
-    console.warn(
-      '[SmartReceipt] firebase-applet-config.json not found, falling back to local memory storage only.',
-    );
+    console.warn("[SmartReceipt] firebase-applet-config.json not found, falling back to local memory storage only.");
   }
 } catch (fbErr) {
-  console.error(
-    '[SmartReceipt] Failed to initialize Firebase backend client:',
-    fbErr,
-  );
+  console.error("[SmartReceipt] Failed to load firebase config:", fbErr);
 }
 
-// In-Memory fallback registry for dynamic robust operations
-const fallbackOtpStorage = new Map<
-  string,
-  { code: string; expiresAt: number }
->();
+// In-Memory fallback registry for local mock operations
+const fallbackOtpStorage = new Map<string, { code: string; expiresAt: number }>();
 
 async function saveOTP(emailKey: string, code: string, expiresAt: number) {
-  if (firestoreDb) {
+  if (firebaseProjectId) {
     try {
-      const docRef = doc(firestoreDb, 'otps', emailKey);
-      await setDoc(docRef, { code, expiresAt });
-      console.log(`[SmartReceipt] Saved OTP for ${emailKey} in Firestore.`);
-      return;
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
+      const response = await fetch(url, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          fields: {
+            code: { stringValue: code },
+            expiresAt: { doubleValue: expiresAt }
+          }
+        })
+      });
+      if (response.ok) {
+        console.log(`[SmartReceipt] Saved OTP for ${emailKey} in Firestore REST.`);
+        return;
+      } else {
+        const errorText = await response.text();
+        console.warn("[SmartReceipt] Firestore REST write response error:", errorText);
+      }
     } catch (dbErr) {
-      console.warn(
-        '[SmartReceipt] Failed to write OTP to Firestore, falling back to local memory:',
-        dbErr,
-      );
+      console.warn("[SmartReceipt] Failed to write OTP to Firestore REST, falling back to local memory:", dbErr);
     }
   }
   fallbackOtpStorage.set(emailKey, { code, expiresAt });
 }
 
-async function getOTP(
-  emailKey: string,
-): Promise<{ code: string; expiresAt: number } | null> {
-  if (firestoreDb) {
+async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: number } | null> {
+  if (firebaseProjectId) {
     try {
-      const docRef = doc(firestoreDb, 'otps', emailKey);
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        return { code: data.code, expiresAt: data.expiresAt };
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
+      const response = await fetch(url);
+      if (response.status === 404) {
+        return null;
+      }
+      if (response.ok) {
+        const data = await response.json() as any;
+        const code = data.fields?.code?.stringValue;
+        const valRaw = data.fields?.expiresAt;
+        let expiresAt = 0;
+        if (valRaw) {
+          if (valRaw.doubleValue !== undefined) {
+            expiresAt = parseFloat(valRaw.doubleValue);
+          } else if (valRaw.integerValue !== undefined) {
+            expiresAt = parseInt(valRaw.integerValue, 10);
+          }
+        }
+        
+        if (code && expiresAt) {
+          return { code, expiresAt };
+        }
+      } else {
+        const errorText = await response.text();
+        console.warn("[SmartReceipt] Firestore REST read response error:", errorText);
       }
     } catch (dbErr) {
-      console.warn(
-        '[SmartReceipt] Failed to read OTP from Firestore, trying local memory:',
-        dbErr,
-      );
+      console.warn("[SmartReceipt] Failed to read OTP from Firestore REST, trying local memory:", dbErr);
     }
   }
   return fallbackOtpStorage.get(emailKey) || null;
 }
 
 async function removeOTP(emailKey: string) {
-  if (firestoreDb) {
+  if (firebaseProjectId) {
     try {
-      const docRef = doc(firestoreDb, 'otps', emailKey);
-      await deleteDoc(docRef);
-      console.log(`[SmartReceipt] Deleted OTP for ${emailKey} from Firestore.`);
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
+      await fetch(url, {
+        method: "DELETE"
+      });
+      console.log(`[SmartReceipt] Deleted OTP for ${emailKey} from Firestore REST.`);
     } catch (dbErr) {
-      console.warn(
-        '[SmartReceipt] Failed to delete OTP from Firestore:',
-        dbErr,
-      );
+      console.warn("[SmartReceipt] Failed to delete OTP from Firestore REST:", dbErr);
     }
   }
   fallbackOtpStorage.delete(emailKey);
 }
 
 // 1. Endpoint to send secure OTP to user email
-app.post(['/api/auth/otp/send', '/auth/otp/send'], async (req, res) => {
+app.post(["/api/auth/otp/send", "/auth/otp/send"], async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email) {
-      res
-        .status(400)
-        .json({ success: false, error: "L'adresse e-mail est requise." });
+      res.status(400).json({ success: false, error: "L'adresse e-mail est requise." });
       return;
     }
 
@@ -155,17 +166,8 @@ app.post(['/api/auth/otp/send', '/auth/otp/send'], async (req, res) => {
     // High robustness RFC email pattern to completely avoid script injections / bypass vectors
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(emailKey) || emailKey.length > 254) {
-      console.log(
-        '[SmartReceipt DEBUG] Adresse e-mail invalide ou suspecte refusée :',
-        emailKey,
-      );
-      res
-        .status(400)
-        .json({
-          success: false,
-          error:
-            "Format d'adresse e-mail invalide ou caractères non autorisés.",
-        });
+      console.log("[SmartReceipt DEBUG] Adresse e-mail invalide ou suspecte refusée :", emailKey);
+      res.status(400).json({ success: false, error: "Format d'adresse e-mail invalide ou caractères non autorisés." });
       return;
     }
     // Generate secure 8-digit access code
@@ -175,55 +177,42 @@ app.post(['/api/auth/otp/send', '/auth/otp/send'], async (req, res) => {
     await saveOTP(emailKey, code, expiresAt);
 
     const apiKey = process.env.RESEND_API_KEY;
-
-    console.log('-----------------------------------------');
+    
+    console.log("-----------------------------------------");
     console.log("[SmartReceipt DEBUG] Requête d'envoi OTP reçue !");
-    console.log('-> Email cible :', emailKey);
-    console.log(
-      '-> Clé RESEND_API_KEY détectée par dotenv :',
-      apiKey
-        ? `Oui (commence par ${apiKey.substring(0, 5)}...)`
-        : 'Non (undefined ou vide)',
-    );
-    console.log(
-      '-> Clé GEMINI_API_KEY détectée par dotenv :',
-      process.env.GEMINI_API_KEY ? 'Oui' : 'Non',
-    );
-    console.log('-----------------------------------------');
+    console.log("-> Email cible :", emailKey);
+    console.log("-> Clé RESEND_API_KEY détectée par dotenv :", apiKey ? `Oui (commence par ${apiKey.substring(0, 5)}...)` : "Non (undefined ou vide)");
+    console.log("-> Clé GEMINI_API_KEY détectée par dotenv :", process.env.GEMINI_API_KEY ? "Oui" : "Non");
+    console.log("-----------------------------------------");
 
     // Fallback if Resend Key is missing
     if (!apiKey) {
-      console.log(
-        `[SmartReceipt DEBUG] Pas de RESEND_API_KEY. Simulation du code : ${code}`,
-      );
-      res.json({
-        success: true,
-        isSimulated: true,
+      console.log(`[SmartReceipt DEBUG] Pas de RESEND_API_KEY. Simulation du code : ${code}`);
+      res.json({ 
+        success: true, 
+        isSimulated: true, 
         code,
-        message:
-          "Mode simulation actif. Le code s'affiche à l'écran car RESEND_API_KEY n'est pas définie dans le fichier .env.",
+        message: "Mode simulation actif. Le code s'affiche à l'écran car RESEND_API_KEY n'est pas définie dans le fichier .env."
       });
       return;
     }
 
     // Try to send real email with Resend via lightweight direct HTTP request with a 4-second timeout
-    console.log(
-      "[SmartReceipt DEBUG] Tentative d'envoi d'un vrai email via l'API Resend...",
-    );
+    console.log("[SmartReceipt DEBUG] Tentative d'envoi d'un vrai email via l'API Resend...");
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     try {
-      const sendResponse = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
+      const sendResponse = await fetch("https://api.resend.com/emails", {
+        method: "POST",
         headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify({
-          from: 'SmartReceipt <onboarding@resend.dev>',
+          from: "SmartReceipt <onboarding@resend.dev>",
           to: [emailKey],
-          subject: 'Votre code de sécurité SmartReceipt',
+          subject: "Votre code de sécurité SmartReceipt",
           html: `
             <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 500px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 16px; background-color: #fafafa;">
               <div style="text-align: center; margin-bottom: 20px;">
@@ -240,66 +229,50 @@ app.post(['/api/auth/otp/send', '/auth/otp/send'], async (req, res) => {
                 Ce code est strictement unique et confidentiel. Il est valable pendant 10 minutes.<br>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
               </p>
             </div>
-          `,
+          `
         }),
-        signal: controller.signal,
+        signal: controller.signal
       });
 
       clearTimeout(timeoutId);
 
-      const sendResult = (await sendResponse.json()) as any;
-      console.log(
-        '[SmartReceipt DEBUG] Résultat retourné par Resend API :',
-        sendResult,
-      );
-
+      const sendResult = await sendResponse.json() as any;
+      console.log("[SmartReceipt DEBUG] Résultat retourné par Resend API :", sendResult);
+      
       if (!sendResponse.ok || sendResult.error) {
-        throw new Error(
-          `Erreur Resend: ${JSON.stringify(sendResult.error || sendResult)}`,
-        );
+        throw new Error(`Erreur Resend: ${JSON.stringify(sendResult.error || sendResult)}`);
       }
 
-      console.log(
-        `[SmartReceipt] Code envoyé par vrai e-mail Resend à ${emailKey}`,
-      );
+      console.log(`[SmartReceipt] Code envoyé par vrai e-mail Resend à ${emailKey}`);
       res.json({ success: true, isSimulated: false });
     } catch (fetchErr: any) {
       clearTimeout(timeoutId);
       throw fetchErr;
     }
+
   } catch (error: any) {
-    console.error(
-      "!!! [SmartReceipt DEBUG] Erreur critique d'envoi OTP avec Resend :",
-      error,
-    );
-
+    console.error("!!! [SmartReceipt DEBUG] Erreur critique d'envoi OTP avec Resend :", error);
+    
     // Graceful recovery for the user so they are never blocked during local tests
-    const emailVal = req.body?.email?.toString().toLowerCase().trim() || '';
+    const emailVal = req.body?.email?.toString().toLowerCase().trim() || "";
     const stored = emailVal ? await getOTP(emailVal) : null;
-    const emergencyCode = stored ? stored.code : '00000000';
-
+    const emergencyCode = stored ? stored.code : "00000000";
+    
     res.json({
       success: true,
       isSimulated: true,
       code: emergencyCode,
-      error: `Erreur d'envoi par e-mail (${
-        error?.message || 'Service suspendu'
-      }). Utilisation temporaire du mode simulation.`,
+      error: `Erreur d'envoi par e-mail (${error?.message || "Service suspendu"}). Utilisation temporaire du mode simulation.`
     });
   }
 });
 
 // 2. Endpoint to verify user entered code
-app.post(['/api/auth/otp/verify', '/auth/otp/verify'], async (req, res) => {
+app.post(["/api/auth/otp/verify", "/auth/otp/verify"], async (req, res) => {
   try {
     const { email, code } = req.body || {};
     if (!email || !code) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          error: "L'e-mail et le code sont obligatoires.",
-        });
+      res.status(400).json({ success: false, error: "L'e-mail et le code sont obligatoires." });
       return;
     }
 
@@ -307,54 +280,31 @@ app.post(['/api/auth/otp/verify', '/auth/otp/verify'], async (req, res) => {
     // High robustness email pattern check
     const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(emailKey) || emailKey.length > 254) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          error: "Format d'adresse e-mail invalide ou suspect.",
-        });
+      res.status(400).json({ success: false, error: "Format d'adresse e-mail invalide ou suspect." });
       return;
     }
 
     const codeClean = code.toString().trim();
     if (!/^\d{8}$/.test(codeClean)) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          error:
-            'Le format du code est incorrect (doit être composé de 8 chiffres).',
-        });
+      res.status(400).json({ success: false, error: "Le format du code est incorrect (doit être composé de 8 chiffres)." });
       return;
     }
 
     // Technical master backdoor or local quick bypass code
-    if (codeClean === '00000000') {
+    if (codeClean === "00000000") {
       res.json({ success: true });
       return;
     }
 
     const stored = await getOTP(emailKey);
     if (!stored) {
-      res
-        .status(400)
-        .json({
-          success: false,
-          error:
-            "Aucun code demandé pour cette adresse. S'il vous plaît, réessayez.",
-        });
+      res.status(400).json({ success: false, error: "Aucun code demandé pour cette adresse. S'il vous plaît, réessayez." });
       return;
     }
 
     if (Date.now() > stored.expiresAt) {
       await removeOTP(emailKey);
-      res
-        .status(400)
-        .json({
-          success: false,
-          error:
-            'Ce code secret a expiré (limite de 10 minutes). Veuillez en commander un nouveau.',
-        });
+      res.status(400).json({ success: false, error: "Ce code secret a expiré (limite de 10 minutes). Veuillez en commander un nouveau." });
       return;
     }
 
@@ -365,42 +315,28 @@ app.post(['/api/auth/otp/verify', '/auth/otp/verify'], async (req, res) => {
       return;
     }
 
-    res
-      .status(400)
-      .json({
-        success: false,
-        error: "Le code d'accès saisi est incorrect. Réessayez !",
-      });
+    res.status(400).json({ success: false, error: "Le code d'accès saisi est incorrect. Réessayez !" });
   } catch (error: any) {
-    console.error('Erreur serveur lors de la validation OTP :', error);
-    res
-      .status(500)
-      .json({ success: false, error: 'Erreur interne de serveur.' });
+    console.error("Erreur serveur lors de la validation OTP :", error);
+    res.status(500).json({ success: false, error: "Erreur interne de serveur." });
   }
 });
 
 // REST API for Scanning Receipts
-app.post(['/api/scan', '/scan'], async (req, res) => {
+app.post(["/api/scan", "/scan"], async (req, res) => {
   try {
     const { image, mimeType } = req.body;
 
     if (!image || !mimeType) {
-      res
-        .status(400)
-        .json({ error: "L'image base64 et le type MIME sont requis." });
+      res.status(400).json({ error: "L'image base64 et le type MIME sont requis." });
       return;
     }
 
     // Strict validation of file types
-    const isMimeImage = mimeType.startsWith('image/');
-    const isMimePdf = mimeType === 'application/pdf';
+    const isMimeImage = mimeType.startsWith("image/");
+    const isMimePdf = mimeType === "application/pdf";
     if (!isMimeImage && !isMimePdf) {
-      res
-        .status(400)
-        .json({
-          error:
-            "Format non pris en charge. Seuls les formats d'image courants et PDF sont autorisés.",
-        });
+      res.status(400).json({ error: "Format non pris en charge. Seuls les formats d'image courants et PDF sont autorisés." });
       return;
     }
 
@@ -419,7 +355,7 @@ Pour chaque article réellement répertorié sur l'image :
 - Assigne-lui une des catégories suivantes : "Alimentation", "Loisirs & Culture", "Santé & Hygiène", "Mode & Habillement", "Électronique & Maison", "Transport & Carburant", "Services & Factures", "Autre".`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-3.5-flash',
+      model: "gemini-3.5-flash",
       contents: [
         {
           parts: [
@@ -435,118 +371,98 @@ Pour chaque article réellement répertorié sur l'image :
       ],
       config: {
         temperature: 0,
-        responseMimeType: 'application/json',
+        responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
-          required: [
-            'merchant',
-            'date',
-            'totalAmount',
-            'taxAmount',
-            'currency',
-            'items',
-          ],
+          required: ["merchant", "date", "totalAmount", "taxAmount", "currency", "items"],
           properties: {
             merchant: {
               type: Type.STRING,
-              description:
-                'Le nom du magasin/commerçant. Exemple: Carrefour, FNAC, Pharmacies Réunies.',
+              description: "Le nom du magasin/commerçant. Exemple: Carrefour, FNAC, Pharmacies Réunies."
             },
             date: {
               type: Type.STRING,
-              description:
-                "La date du ticket au format YYYY-MM-DD. Si absente, extrais l'année/mois puis estime ou utilise le 2026-06-01 (date courante).",
+              description: "La date du ticket au format YYYY-MM-DD. Si absente, extrais l'année/mois puis estime ou utilise le 2026-06-01 (date courante)."
             },
             totalAmount: {
               type: Type.NUMBER,
-              description:
-                'Le montant total final payé TTC en nombre flottant.',
+              description: "Le montant total final payé TTC en nombre flottant."
             },
             taxAmount: {
               type: Type.NUMBER,
-              description:
-                'Le montant de la taxe (TVA) estimé ou extrait. Si introuvable ou si pas mentionné, 0.',
+              description: "Le montant de la taxe (TVA) estimé ou extrait. Si introuvable ou si pas mentionné, 0."
             },
             currency: {
               type: Type.STRING,
-              description: 'La devise du ticket, par exemple EUR, USD, CAD.',
+              description: "La devise du ticket, par exemple EUR, USD, CAD."
             },
             items: {
               type: Type.ARRAY,
-              description: 'La liste des articles trouvés sur le ticket.',
+              description: "La liste des articles trouvés sur le ticket.",
               items: {
                 type: Type.OBJECT,
-                required: ['name', 'quantity', 'price', 'category'],
+                required: ["name", "quantity", "price", "category"],
                 properties: {
                   name: {
                     type: Type.STRING,
-                    description: "Nom propre et clair de l'article.",
+                    description: "Nom propre et clair de l'article."
                   },
                   quantity: {
                     type: Type.NUMBER,
-                    description:
-                      'Quantité achetée (entier ou flottant). Si non spécifié, défaut 1.',
+                    description: "Quantité achetée (entier ou flottant). Si non spécifié, défaut 1."
                   },
                   price: {
                     type: Type.NUMBER,
-                    description:
-                      'Prix total payé de cet article pour cette quantité.',
+                    description: "Prix total payé de cet article pour cette quantité."
                   },
                   category: {
                     type: Type.STRING,
-                    description:
-                      'La catégorie. Doit être strictement une des valeurs: Alimentation, Loisirs & Culture, Santé & Hygiène, Mode & Habillement, Électronique & Maison, Transport & Carburant, Services & Factures, Autre.',
-                  },
-                },
-              },
+                    description: "La catégorie. Doit être strictement une des valeurs: Alimentation, Loisirs & Culture, Santé & Hygiène, Mode & Habillement, Électronique & Maison, Transport & Carburant, Services & Factures, Autre."
+                  }
+                }
+              }
             },
             rawResponse: {
               type: Type.STRING,
-              description:
-                "Un commentaire court et sympathique en français sur les achats effectués (ex: 'De bons petits plats s'annoncent !', 'Petite folie high-tech mais justifiée !').",
-            },
-          },
-        },
-      },
+              description: "Un commentaire court et sympathique en français sur les achats effectués (ex: 'De bons petits plats s'annoncent !', 'Petite folie high-tech mais justifiée !')."
+            }
+          }
+        }
+      }
     });
 
-    const text = response.text || '{}';
+    const text = response.text || "{}";
     const data = JSON.parse(text);
 
     res.json({ success: true, data });
   } catch (error: any) {
-    console.error('!!! [SmartReceipt DEBUG] Erreur de scan de ticket:', error);
-
-    let errorMessage =
-      error.message ||
-      "Une erreur est survenue lors de l'analyse du ticket par l'intelligence artificielle.";
-
+    console.error("!!! [SmartReceipt DEBUG] Erreur de scan de ticket:", error);
+    
+    let errorMessage = error.message || "Une erreur est survenue lors de l'analyse du ticket par l'intelligence artificielle.";
+    
     // Check if it's an invalid API key error from Gemini
-    const errString =
-      typeof error === 'string' ? error : JSON.stringify(error) || '';
+    const errString = typeof error === "string" ? error : JSON.stringify(error) || "";
     if (
-      errorMessage.includes('API key not valid') ||
-      errorMessage.includes('API_KEY_INVALID') ||
-      errString.includes('API key not valid') ||
-      errString.includes('API_KEY_INVALID')
+      errorMessage.includes("API key not valid") || 
+      errorMessage.includes("API_KEY_INVALID") || 
+      errString.includes("API key not valid") || 
+      errString.includes("API_KEY_INVALID")
     ) {
-      errorMessage =
-        "Clé API Gemini invalide ! La clé d'API déclarée sous le nom 'GEMINI_API_KEY' dans votre fichier '.env' local n'est pas acceptée par Google. Veuillez générer une nouvelle clé API propre depuis l'interface Google AI Studio et l'indiquer dans votre fichier '.env' sans guillemets.";
+      errorMessage = "Clé API Gemini invalide ! La clé d'API déclarée sous le nom 'GEMINI_API_KEY' dans votre fichier '.env' local n'est pas acceptée par Google. Veuillez générer une nouvelle clé API propre depuis l'interface Google AI Studio et l'indiquer dans votre fichier '.env' sans guillemets.";
     } else if (
-      errorMessage.toLowerCase().includes('high demand') ||
-      errorMessage.toLowerCase().includes('503') ||
-      errorMessage.toLowerCase().includes('unavailable') ||
-      errString.toLowerCase().includes('high demand') ||
-      errString.toLowerCase().includes('503') ||
-      errString.toLowerCase().includes('unavailable')
+      errorMessage.toLowerCase().includes("high demand") ||
+      errorMessage.toLowerCase().includes("503") ||
+      errorMessage.toLowerCase().includes("unavailable") ||
+      errString.toLowerCase().includes("high demand") ||
+      errString.toLowerCase().includes("503") ||
+      errString.toLowerCase().includes("unavailable")
     ) {
-      errorMessage =
-        "Les serveurs gratuits de Google Gemini sont actuellement très sollicités (Erreur de forte demande 503). Pas d'inquiétude, c'est temporaire ! Veuillez patienter de 5 à 10 secondes puis cliquer à nouveau sur le bouton 'Analyser le ticket'.";
+      errorMessage = "Les serveurs gratuits de Google Gemini sont actuellement très sollicités (Erreur de forte demande 503). Pas d'inquiétude, c'est temporaire ! Veuillez patienter de 5 à 10 secondes puis cliquer à nouveau sur le bouton 'Analyser le ticket'.";
     }
-
+    
     res.status(500).json({
       success: false,
-      error: errorMessage,
+      error: errorMessage
     });
   }
 });
