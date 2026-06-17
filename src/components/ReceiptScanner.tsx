@@ -23,6 +23,7 @@ interface ReceiptScannerProps {
     originalImageName: string,
     base64Preview?: string,
   ) => void;
+  isPremium?: boolean;
 }
 
 const SCAN_LOADER_STEPS = [
@@ -34,7 +35,10 @@ const SCAN_LOADER_STEPS = [
   'Validation finale des totaux et de la monnaie...',
 ];
 
-export default function ReceiptScanner({ onScanSuccess }: ReceiptScannerProps) {
+export default function ReceiptScanner({
+  onScanSuccess,
+  isPremium = false,
+}: ReceiptScannerProps) {
   const [activeTab, setActiveTab] = useState<'scan' | 'manual'>('scan');
 
   // OCR Scan states
@@ -267,6 +271,11 @@ export default function ReceiptScanner({ onScanSuccess }: ReceiptScannerProps) {
               size={18}
             />{' '}
             Enregistrer des transactions
+            {isPremium && (
+              <span className="text-[10px] text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-500/20 font-mono font-bold uppercase tracking-wider shrink-0 select-none animate-pulse">
+                Premium Actif
+              </span>
+            )}
           </h2>
           <p className="text-xs text-zinc-400 max-w-xl">
             Ajoutez de nouvelles dépenses via la photo inteligente de vos

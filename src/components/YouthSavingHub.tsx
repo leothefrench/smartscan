@@ -13,12 +13,21 @@ import {
   ShieldCheck,
   Check,
 } from 'lucide-react';
+import StripeCheckoutModal from './StripeCheckoutModal';
 
 interface YouthSavingHubProps {
   receipts: Receipt[];
+  isPremium: boolean;
+  setIsPremium: (status: boolean) => void;
+  userEmail: string | null;
 }
 
-export default function YouthSavingHub({ receipts }: YouthSavingHubProps) {
+export default function YouthSavingHub({
+  receipts,
+  isPremium,
+  setIsPremium,
+  userEmail,
+}: YouthSavingHubProps) {
   // 1. Calculate active spend on fast-food/delivery/quick snacks
   const fastFoodKeywords = [
     'resto',
@@ -72,9 +81,8 @@ export default function YouthSavingHub({ receipts }: YouthSavingHubProps) {
   const totalMicroSpend = monthlyCoffeeCost + monthlySubsCost;
   const yearlyPotentialSavings = totalMicroSpend * 12;
 
-  // 3. Premium State Simulation
-  const [isSimulatingPremium, setIsSimulatingPremium] =
-    useState<boolean>(false);
+  // 3. Premium Checked Controls
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
 
   // 4. User Gamified Rank based on scans and total spend ratio
   const scanCount = receipts.length;
@@ -304,21 +312,21 @@ export default function YouthSavingHub({ receipts }: YouthSavingHubProps) {
               </div>
             </div>
 
-            {/* Premium pricing callout */}
-            <div className="bg-zinc-950/80 rounded-xl p-3 border border-zinc-800 flex items-center justify-between mb-4">
-              <div>
-                <span className="text-xs text-zinc-400 font-semibold block leading-tight">
+            {/* Premium pricing callout - with shrink-0 and whitespace-nowrap to prevent Euro (€) symbol wrapping */}
+            <div className="bg-zinc-950/80 rounded-xl p-3 border border-zinc-800 flex items-center justify-between gap-4 mb-4">
+              <div className="min-w-0">
+                <span className="text-xs text-zinc-400 font-semibold block leading-tight truncate">
                   Abonnement Mensuel
                 </span>
-                <span className="text-[10px] text-zinc-500 font-semibold">
+                <span className="text-[10px] text-zinc-500 font-semibold block leading-snug">
                   Sans engagement, résiliation en ligne
                 </span>
               </div>
-              <div className="text-right">
-                <span className="text-lg font-black text-amber-400 font-mono">
+              <div className="text-right shrink-0">
+                <span className="text-lg font-black text-amber-400 font-mono whitespace-nowrap text-right block">
                   4,99 €
                 </span>
-                <span className="text-[10px] text-zinc-400 font-medium block leading-none">
+                <span className="text-[10px] text-zinc-400 font-medium block leading-none whitespace-nowrap">
                   / mois
                 </span>
               </div>
@@ -358,11 +366,11 @@ export default function YouthSavingHub({ receipts }: YouthSavingHubProps) {
           </div>
 
           <div className="mt-5 space-y-2">
-            {!isSimulatingPremium ? (
+            {!isPremium ? (
               <button
                 type="button"
-                onClick={() => setIsSimulatingPremium(true)}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98]"
+                onClick={() => setIsCheckoutOpen(true)}
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
               >
                 Activer l'essai Premium
                 <ArrowRight
@@ -378,8 +386,8 @@ export default function YouthSavingHub({ receipts }: YouthSavingHubProps) {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsSimulatingPremium(false)}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-400 underline"
+                  onClick={() => setIsPremium(false)}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-400 underline cursor-pointer"
                 >
                   Revenir à la version gratuite
                 </button>
@@ -387,6 +395,14 @@ export default function YouthSavingHub({ receipts }: YouthSavingHubProps) {
             )}
           </div>
         </div>
+
+        {/* Dynamic Stripe simulated payment form modal integration */}
+        <StripeCheckoutModal
+          isOpen={isCheckoutOpen}
+          onClose={() => setIsCheckoutOpen(false)}
+          onSuccess={() => setIsPremium(true)}
+          userEmail={userEmail}
+        />
       </div>
 
       {/* 4. User Gamification Tiers */}
