@@ -35,6 +35,7 @@ export default function StripeCheckoutModal({
   const [loadingText, setLoadingText] = useState('');
   const [tdsCode, setTdsCode] = useState('');
   const [smsSent, setSmsSent] = useState(false);
+  const [realStripeLoading, setRealStripeLoading] = useState(false);
 
   // Auto-fill user name based on email
   useEffect(() => {
@@ -195,12 +196,55 @@ export default function StripeCheckoutModal({
     setErrorMsg('');
   };
 
+  const handleRealStripeRedirect = async () => {
+    if (!userEmail) {
+      setErrorMsg(
+        'Veuillez vous connecter pour initier la souscription Stripe.',
+      );
+      return;
+    }
+    setRealStripeLoading(true);
+    setErrorMsg('');
+    try {
+      const userId = userEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const res = await fetch('/api/stripe/create-checkout-session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          userId: userId,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success && data.url) {
+        // Redirect to safe Stripe hosted checkout
+        window.location.href = data.url;
+      } else {
+        throw new Error(
+          data.error || 'Une erreur est survenue lors de la redirection.',
+        );
+      }
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(
+        `Impossible de lancer le paiement réel : ${
+          err.message || err
+        }. Veuillez vous connecter à Stripe d'abord ou configurer la clé secrète STRIPE_SECRET_KEY dans vos variables d'environnement (.env).`,
+      );
+    } finally {
+      setRealStripeLoading(false);
+    }
+  };
+
   return (
     <div
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
       id="stripe-checkout-modal-container"
     >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-md overflow-hidden relative shadow-2xl shadow-amber-950/5">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col overflow-hidden relative shadow-2xl shadow-amber-950/5">
         {/* Header Close button */}
         {paymentStep !== 'loading' && (
           <button
@@ -213,7 +257,7 @@ export default function StripeCheckoutModal({
         )}
 
         {/* Brand Banner Stripe Style */}
-        <div className="bg-zinc-900 px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+        <div className="bg-zinc-900 px-6 py-4 border-b border-zinc-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
             <span className="text-xs font-bold text-zinc-300 font-mono tracking-tight uppercase">
@@ -227,7 +271,7 @@ export default function StripeCheckoutModal({
         </div>
 
         {/* Modal Main Core Container */}
-        <div className="p-6">
+        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
           {/* STEP 1: Form Fill */}
           {paymentStep === 'form' && (
             <form onSubmit={handleLaunchPayment} className="space-y-4">
@@ -241,6 +285,52 @@ export default function StripeCheckoutModal({
                     4,99 €/mo.
                   </span>{' '}
                   sans engagement.
+                </p>
+              </div>
+
+              {/* Error Callout */}
+              {errorMsg && (
+                <div className="p-3 bg-red-950/40 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-start gap-1.5 font-sans">
+                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {/* Option A: Real Stripe Checkout integration with secure session */}
+              <div className="space-y-2 pb-4 border-b border-zinc-900">
+                <span className="text-[10px] text-amber-500 font-bold uppercase tracking-wider block">
+                  Option A : Mode réel officiel (Recommandé)
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRealStripeRedirect}
+                  disabled={realStripeLoading}
+                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 disabled:opacity-50 text-white font-bold py-3 px-4 rounded-xl shadow-lg active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-blue-500/15"
+                >
+                  {realStripeLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    <ShieldCheck size={14} className="text-white shrink-0" />
+                  )}
+                  {realStripeLoading
+                    ? 'Initialisation Stripe...'
+                    : 'Payer via Page Sécurisée Stripe'}
+                </button>
+                <span className="text-[9px] text-zinc-500 block leading-normal text-center">
+                  Redirection cryptée vers la passerelle sécurisée Stripe
+                  officielle (GPay, ApplePay, CB).
+                </span>
+              </div>
+
+              {/* Option B: Local Simulator sandbox */}
+              <div className="space-y-1.5 pt-2">
+                <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">
+                  Option B : Simulateur Local d'intégration
+                </span>
+                <p className="text-[10px] text-zinc-500 leading-normal">
+                  Remplissez et validez le formulaire ci-dessous pour tester
+                  l'interface utilisateur instantanément sans configurer de clés
+                  API :
                 </p>
               </div>
 
@@ -260,14 +350,6 @@ export default function StripeCheckoutModal({
                   Remplir Auto
                 </button>
               </div>
-
-              {/* Error Callout */}
-              {errorMsg && (
-                <div className="p-3 bg-red-950/40 border border-red-500/20 text-red-400 text-xs rounded-xl flex items-start gap-1.5 font-sans">
-                  <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                  <span>{errorMsg}</span>
-                </div>
-              )}
 
               <div className="space-y-3">
                 {/* Email Address */}

@@ -47,6 +47,10 @@ export default function App() {
     existingId: string;
   } | null>(null);
   const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [stripeNotification, setStripeNotification] = useState<{
+    type: 'success' | 'canceled';
+    message: string;
+  } | null>(null);
 
   const handleSetIsPremium = async (status: boolean) => {
     setIsPremium(status);
@@ -93,6 +97,38 @@ export default function App() {
   useEffect(() => {
     const userSession = localStorage.getItem('scanner_user_session');
     let initialReceipts: Receipt[] = [];
+
+    // Check Stripe Payment checkout return status in URL search query
+    const params = new URLSearchParams(window.location.search);
+    const stripeStatus = params.get('stripe_status');
+    if (stripeStatus) {
+      window.history.replaceState({}, document.title, window.location.pathname);
+      if (stripeStatus === 'success') {
+        setIsPremium(true);
+        if (userSession) {
+          const userId = userSession
+            .toLowerCase()
+            .replace(/[^a-zA-Z0-9_\-]/g, '_');
+          localStorage.setItem(`premium_${userId}`, 'true');
+          if (IS_FIREBASE_REAL) {
+            saveUserPremiumStatus(userId, true).catch((err) =>
+              console.warn(err),
+            );
+          }
+        }
+        setStripeNotification({
+          type: 'success',
+          message:
+            'Félicitations ! Votre souscription Stripe a été complétée avec succès. Votre espace SmartScan Premium PRO est désormais pleinement actif ! 🎉',
+        });
+      } else if (stripeStatus === 'canceled') {
+        setStripeNotification({
+          type: 'canceled',
+          message:
+            "L'opération de paiement Stripe a été annulée. Aucun frais n'a été débité de votre carte bancaire.",
+        });
+      }
+    }
 
     if (userSession) {
       setCurrentUserEmail(userSession);
@@ -415,6 +451,52 @@ export default function App() {
 
       {/* Main Container Area */}
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 space-y-6">
+        {/* Stripe Success or Canceled in-app notifications banner */}
+        {stripeNotification && (
+          <div
+            className={`p-4 rounded-2xl border flex items-start gap-4 shadow-xl ${
+              stripeNotification.type === 'success'
+                ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200'
+                : 'bg-amber-950/40 border-amber-500/30 text-amber-200'
+            }`}
+            id="stripe-status-notification"
+          >
+            <div
+              className={`p-2 rounded-xl mt-0.5 ${
+                stripeNotification.type === 'success'
+                  ? 'bg-emerald-500/10'
+                  : 'bg-amber-500/10'
+              }`}
+            >
+              <ShieldCheck
+                size={18}
+                className={
+                  stripeNotification.type === 'success'
+                    ? 'text-emerald-400'
+                    : 'text-amber-400'
+                }
+              />
+            </div>
+            <div className="space-y-1 flex-1">
+              <span className="text-xs font-bold font-mono tracking-tight uppercase block">
+                {stripeNotification.type === 'success'
+                  ? 'Abonnement Activé ✅'
+                  : 'Paiement Annulé ⚠️'}
+              </span>
+              <p className="text-[11px] leading-relaxed opacity-95">
+                {stripeNotification.message}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStripeNotification(null)}
+              className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+
         {/* Welcome Pitch Section */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-6 bg-zinc-900/60 border border-zinc-800/80 rounded-3xl">
           <div className="space-y-1">
