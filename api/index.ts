@@ -753,6 +753,7 @@ app.post(
           email: cleanEmail,
         },
         subscription_data: {
+          trial_period_days: 7,
           metadata: {
             userId: cleanUserId,
             email: cleanEmail,

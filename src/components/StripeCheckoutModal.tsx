@@ -280,7 +280,7 @@ export default function StripeCheckoutModal({
                   SmartScan Premium PRO
                 </h3>
                 <p className="text-xs text-zinc-400">
-                  Essai gratuit de 14 jours, puis{' '}
+                  Essai gratuit de 7 jours, puis{' '}
                   <span className="text-amber-400 font-bold font-mono">
                     4,99 €/mo.
                   </span>{' '}
@@ -367,7 +367,7 @@ export default function StripeCheckoutModal({
 
                 {/* Card Number */}
                 <div className="space-y-1">
-                  <label className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block flex justify-between items-center">
+                  <label className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider flex justify-between items-center">
                     <span>Numéro de carte</span>
                     <span className="text-[9px] text-amber-500 font-mono font-medium">
                       {getCardBrand()}
@@ -468,15 +468,15 @@ export default function StripeCheckoutModal({
               {/* Submit CTA Trial Button */}
               <button
                 type="submit"
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-1.5 mt-2 cursor-pointer"
+                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 font-bold py-3 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-1.5 mt-2 cursor-pointer"
               >
                 <ShieldCheck size={14} />
-                Lancer l'essai gratuit de 14 jours
+                Lancer l'essai gratuit de 7 jours
               </button>
 
               <div className="text-[9px] text-zinc-500 text-center leading-normal">
                 En initiant cet essai, vous acceptez d'activer un paiement
-                récurrent de 4,99 €/mois après 14 jours si vous ne résiliez pas
+                récurrent de 4,99 €/mois après 7 jours si vous ne résiliez pas
                 d'ici là. Prélèvement annulé instantanément d'un clic depuis
                 votre compte.
               </div>
@@ -603,3 +603,4 @@ export default function StripeCheckoutModal({
     </div>
   );
 }
+
