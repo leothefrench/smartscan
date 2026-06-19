@@ -16,6 +16,8 @@ export default function StripeCheckoutModal({
 }: StripeCheckoutModalProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [realStripeLoading, setRealStripeLoading] = useState(false);
+  const [hasAcknowledgedWithdrawal, setHasAcknowledgedWithdrawal] =
+    useState(false);
 
   if (!isOpen) return null;
 
@@ -23,6 +25,12 @@ export default function StripeCheckoutModal({
     if (!userEmail) {
       setErrorMsg(
         'Veuillez vous connecter pour initier la souscription Stripe.',
+      );
+      return;
+    }
+    if (!hasAcknowledgedWithdrawal) {
+      setErrorMsg(
+        "Vous devez accepter la renonciation au droit de rétractation pour démarrer l'accès Premium instantané.",
       );
       return;
     }
@@ -145,13 +153,36 @@ export default function StripeCheckoutModal({
               </div>
             </div>
 
+            {/* Legal Waiver Consent Checkbox */}
+            <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-4 space-y-3">
+              <label className="flex items-start gap-3 cursor-pointer group select-none">
+                <input
+                  type="checkbox"
+                  checked={hasAcknowledgedWithdrawal}
+                  onChange={(e) => {
+                    setHasAcknowledgedWithdrawal(e.target.checked);
+                    setErrorMsg('');
+                  }}
+                  className="mt-0.5 w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-amber-500 focus:ring-amber-500/30 focus:ring-offset-0 focus:ring-2 accent-amber-500 cursor-pointer"
+                />
+                <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 leading-normal">
+                  J’autorise l’exécution immédiate du service Premium PRO et je
+                  renonce expressément à mon droit de rétractation de 14 jours,
+                  conformément à la réglementation européenne (Art. L221-28 13°
+                  du Code de la consommation) pour profiter instantanément de
+                  l’ensemble de ses fonctionnalités de traitement d'images OCR
+                  et d'exports comptables.
+                </span>
+              </label>
+            </div>
+
             {/* Secure Payment Button */}
             <div className="space-y-3 pt-1">
               <button
                 type="button"
                 onClick={handleRealStripeRedirect}
-                disabled={realStripeLoading}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-800 disabled:to-zinc-800 disabled:opacity-50 text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
+                disabled={realStripeLoading || !hasAcknowledgedWithdrawal}
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
               >
                 {realStripeLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-zinc-950" />
@@ -171,7 +202,8 @@ export default function StripeCheckoutModal({
             <div className="text-[9px] text-zinc-600 text-center leading-normal">
               En initiant cet essai, vous acceptez d'activer un paiement
               récurrent d'un montant de 4,99 €/mois après 7 jours si vous ne
-              résiliez pas d'ici là. Résiliation possible d'un clic.
+              résiliez pas d'ici là. Résiliation possible d'un clic depuis vos
+              paramètres.
             </div>
           </div>
         </div>

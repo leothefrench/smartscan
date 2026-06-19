@@ -32,7 +32,7 @@ export default function LegalTermsModal({
         <div className="bg-zinc-900 px-6 py-4 border-b border-zinc-800 flex items-center gap-2 shrink-0">
           <Scale size={16} className="text-amber-500" />
           <h2 className="text-sm font-bold text-white uppercase tracking-wider font-mono">
-            Conditions Légales & CGU
+            Conditions Générales (CGU / CGV)
           </h2>
         </div>
 
@@ -41,7 +41,7 @@ export default function LegalTermsModal({
           <div className="space-y-1.5 border-b border-zinc-900 pb-3">
             <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5">
               <BadgeInfo size={14} className="text-amber-400" />
-              1. Essai de 7 jours & Abonnement PRO
+              1. Essai de 7 jours & Conditions de Vente (CGV)
             </h3>
             <p className="leading-relaxed text-zinc-400">
               SmartScan propose un accès d'évaluation de{' '}
@@ -60,15 +60,42 @@ export default function LegalTermsModal({
 
           <div className="space-y-1.5 border-b border-zinc-900 pb-3">
             <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5">
+              <Scale size={14} className="text-amber-400" />
+              2. Exécution Immédiate & Renonciation à la Rétractation
+            </h3>
+            <p className="leading-relaxed text-zinc-400 font-medium">
+              Conformément à la directive européenne sur les droits des
+              consommateurs (transposée en France à l'
+              <strong>Article L221-28 13° du Code de la consommation</strong>) :
+            </p>
+            <p className="leading-relaxed text-zinc-400 bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-900 text-[11px]">
+              En demandant l'accès immédiat à l'abonnement Premium PRO dès la
+              souscription (traitement OCR instantané, exports illimités),{' '}
+              <strong>
+                l'utilisateur consent expressément à ce que le service débute
+                immédiatement et renonce de fait à son droit de rétractation
+                légal de 14 jours
+              </strong>
+              .
+            </p>
+            <p className="leading-relaxed text-zinc-400">
+              Cette case de consentement obligatoire cochée lors de la
+              confirmation du panier valide légalement cette renonciation pour
+              permettre la fourniture immédiate du contenu numérique.
+            </p>
+          </div>
+
+          <div className="space-y-1.5 border-b border-zinc-900 pb-3">
+            <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5">
               <ShieldAlert size={14} className="text-amber-400" />
-              2. Résiliation immédiate en un clic
+              3. Résiliation immédiate en un clic
             </h3>
             <p className="leading-relaxed text-zinc-400">
               Notre offre est <strong>sans aucun engagement de durée</strong>.
               Vous disposez d'un droit absolu de résiliation immédiate en un
               seul clic à tout moment. Il vous suffit d'appuyer sur le bouton de
-              désactivation <strong>"Revenir à la version gratuite"</strong> (ou
-              résilier) disponible directement sur votre tableau de bord.
+              désactivation <strong>"Résilier l'abonnement"</strong> disponible
+              sur votre tableau de bord.
             </p>
             <p className="leading-relaxed text-zinc-400">
               Aucun frais de fermeture ou pénalité ne vous seront jamais
@@ -80,7 +107,7 @@ export default function LegalTermsModal({
           <div className="space-y-1.5 border-b border-zinc-900 pb-3">
             <h3 className="font-extrabold text-white text-sm flex items-center gap-1.5">
               <ShieldCheck size={14} className="text-emerald-400" />
-              3. RGPD & Protection absolue de votre vie privée
+              4. RGPD & Protection absolue de votre vie privée (CGU)
             </h3>
             <p className="leading-relaxed text-zinc-400">
               Le traitement de vos photos de reçus et factures s'effectue dans
