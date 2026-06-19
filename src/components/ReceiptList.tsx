@@ -8,22 +8,74 @@ import {
   FileText,
   ChevronRight,
   Eye,
+  Download,
+  Sparkles,
 } from 'lucide-react';
 
 interface ReceiptListProps {
   receipts: Receipt[];
   onSelectReceipt: (receipt: Receipt) => void;
   onClearDemo?: () => void;
+  isPremium?: boolean;
+  onSubscribeClick?: () => void;
 }
 
 export default function ReceiptList({
   receipts,
   onSelectReceipt,
   onClearDemo,
+  isPremium = false,
+  onSubscribeClick,
 }: ReceiptListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] =
     useState<string>('Toutes');
+
+  const handleExportCSV = () => {
+    if (!isPremium) {
+      onSubscribeClick?.();
+      return;
+    }
+
+    if (receipts.length === 0) return;
+
+    // Generate CSV content
+    // Headers: Date d'achat,Commerçant,Montant Total,Montant TVA,Devise,Catégories,Détails articles
+    let csvContent = '';
+    // UTF-8 BOM so Excel understands accented characters
+    csvContent += '\uFEFF';
+    csvContent +=
+      "Date d'achat,Commerçant,Montant Total,Montant TVA,Devise,Catégories,Détails articles\n";
+
+    receipts.forEach((r) => {
+      const formattedMerchant = r.merchant.replace(/"/g, '""');
+      const categories = Array.from(
+        new Set(r.items.map((it) => it.category)),
+      ).join('; ');
+      const itemsDetails = r.items
+        .map((it) => `${it.name} (${it.price}€ x ${it.quantity})`)
+        .join(' | ')
+        .replace(/"/g, '""');
+
+      csvContent += `${r.date},"${formattedMerchant}",${r.totalAmount},${
+        r.taxAmount || 0
+      },${r.currency},"${categories}","${itemsDetails}"\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute(
+      'download',
+      `smartscan_export_comptable_${
+        new Date().toISOString().split('T')[0]
+      }.csv`,
+    );
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // Check if any demo data exists
   const hasDemoData = receipts.some(
@@ -111,6 +163,43 @@ export default function ReceiptList({
             </select>
             <Filter className="absolute right-3 top-2.5 h-3 w-3 text-zinc-500 pointer-events-none" />
           </div>
+
+          {/* Export CSV button */}
+          <button
+            type="button"
+            onClick={handleExportCSV}
+            disabled={receipts.length === 0}
+            className={`flex items-center gap-1.5 pl-3.5 pr-3.5 py-2 text-xs font-bold rounded-xl transition-all border cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed ${
+              isPremium
+                ? 'bg-zinc-950 border-zinc-800 hover:border-emerald-500/30 text-emerald-400'
+                : 'bg-amber-950/20 border-amber-900/40 hover:border-amber-400 text-amber-400'
+            }`}
+            title={
+              isPremium
+                ? "Exporter l'ensemble de vos données comptables au format Excel/CSV"
+                : "L'export comptable est réservé aux abonnés Premium PRO"
+            }
+          >
+            {isPremium ? (
+              <>
+                <Download size={13} />
+                <span>Exporter en Excel/CSV</span>
+              </>
+            ) : (
+              <>
+                <Sparkles
+                  size={12}
+                  className="text-amber-400 animate-pulse shrink-0"
+                />
+                <span>
+                  Exporter (CSV){' '}
+                  <span className="text-[9px] font-black font-sans text-amber-500 bg-amber-950/80 px-1.5 py-0.5 rounded border border-amber-500/10 uppercase tracking-wide">
+                    PRO
+                  </span>
+                </span>
+              </>
+            )}
+          </button>
         </div>
       </div>
 

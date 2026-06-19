@@ -7,6 +7,8 @@ import ReceiptDetailsModal from './components/ReceiptDetailsModal';
 import AuthScreen from './components/AuthScreen';
 import PrivacyBanner from './components/PrivacyBanner';
 import YouthSavingHub from './components/YouthSavingHub';
+import StripeCheckoutModal from './components/StripeCheckoutModal';
+import LegalTermsModal from './components/LegalTermsModal';
 import {
   IS_FIREBASE_REAL,
   fetchUserReceipts,
@@ -39,7 +41,6 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [showQrCode, setShowQrCode] = useState<boolean>(false);
-  const [customIp, setCustomIp] = useState<string>('');
   const [duplicateReceiptData, setDuplicateReceiptData] = useState<{
     data: Receipt;
     originalImageName: string;
@@ -47,6 +48,8 @@ export default function App() {
     existingId: string;
   } | null>(null);
   const [isPremium, setIsPremium] = useState<boolean>(false);
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [isLegalOpen, setIsLegalOpen] = useState<boolean>(false);
   const [stripeNotification, setStripeNotification] = useState<{
     type: 'success' | 'canceled';
     message: string;
@@ -70,27 +73,7 @@ export default function App() {
   };
 
   const getQrUrl = () => {
-    const currentUrl = window.location.href;
-    const trimmed = customIp.trim();
-    if (trimmed) {
-      if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
-        return trimmed;
-      }
-      try {
-        const urlObj = new URL(currentUrl);
-        let hostWithPort = trimmed;
-        if (!hostWithPort.includes(':')) {
-          if (urlObj.port) {
-            hostWithPort = `${hostWithPort}:${urlObj.port}`;
-          }
-        }
-        urlObj.host = hostWithPort;
-        return urlObj.toString();
-      } catch (e) {
-        return currentUrl;
-      }
-    }
-    return currentUrl;
+    return window.location.href;
   };
 
   // Initialize receipts from LocalStorage or seed with some defaults, and sync with Cloud Firestore
@@ -527,6 +510,7 @@ export default function App() {
           isPremium={isPremium}
           setIsPremium={handleSetIsPremium}
           userEmail={currentUserEmail}
+          onSubscribeClick={() => setIsCheckoutOpen(true)}
         />
 
         {/* Scanner Uploader Module */}
@@ -540,19 +524,28 @@ export default function App() {
           receipts={receipts}
           onSelectReceipt={setSelectedReceipt}
           onClearDemo={handleClearDemo}
+          isPremium={isPremium}
+          onSubscribeClick={() => setIsCheckoutOpen(true)}
         />
       </main>
 
       {/* Footer information section */}
-      <footer className="py-8 border-t border-zinc-900 bg-zinc-950/40 text-center text-xs text-zinc-500 space-y-1">
+      <footer className="py-8 border-t border-zinc-900 bg-zinc-950/40 text-center text-xs text-zinc-500 space-y-1.5 shrink-0">
         <p>
           SmartScan — Application à haute intégrité et conformité RGPD
           européenne.
         </p>
-        <p className="text-[10px] text-zinc-600">
+        <p className="text-[10px] text-zinc-650">
           Aucune donnée n'est stockée à des fins d'entraînement ou revendue à
           des tiers.
         </p>
+        <button
+          type="button"
+          onClick={() => setIsLegalOpen(true)}
+          className="text-[10px] text-amber-500 hover:text-amber-400 underline font-semibold cursor-pointer block mx-auto mt-2"
+        >
+          Conditions Générales d'Utilisation (CGU) & Mentions Légales
+        </button>
       </footer>
 
       {/* Interactive detail previews overlay */}
@@ -671,10 +664,10 @@ export default function App() {
       {/* QR Code Scan on Mobile Modal */}
       {showQrCode && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 max-w-sm w-full relative space-y-4 shadow-2xl">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-3xl p-6 max-w-sm w-full relative space-y-5 shadow-2xl">
             <button
               onClick={() => setShowQrCode(false)}
-              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-full hover:bg-zinc-800 transition-colors"
+              className="absolute top-4 right-4 text-zinc-400 hover:text-white p-1 rounded-full hover:bg-zinc-800 transition-colors cursor-pointer"
             >
               <X size={18} />
             </button>
@@ -683,114 +676,49 @@ export default function App() {
                 Scanner avec votre smartphone
               </h3>
               <p className="text-[10px] text-zinc-400">
-                Pour tester l'application directement sur votre Xiaomi / Redmi
+                Pour tester l'application directement sur votre smartphone
               </p>
             </div>
 
-            <div className="flex flex-col gap-3">
-              <div className="flex justify-center bg-white p-4 rounded-2xl border-4 border-zinc-950 w-fit mx-auto">
-                <img
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                    getQrUrl(),
-                  )}`}
-                  alt="QR Code de l'application"
-                  className="w-40 h-40"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-
-              <div className="space-y-1.5 bg-zinc-950 p-3 rounded-2xl border border-zinc-800">
-                <label className="text-[10px] font-bold text-zinc-400 block tracking-tight uppercase">
-                  📡 Adresse IP locale ou URL personnalisée :
-                </label>
-                <div className="flex gap-1.5">
-                  <input
-                    type="text"
-                    placeholder="Ex: 192.168.1.50 ou https://...vercel.app"
-                    value={customIp}
-                    onChange={(e) => setCustomIp(e.target.value)}
-                    className="flex-1 bg-zinc-900 text-white text-xs border border-zinc-800 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-amber-500 font-mono"
-                  />
-                  {customIp && (
-                    <button
-                      type="button"
-                      onClick={() => setCustomIp('')}
-                      className="px-2 py-1 text-[10px] bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-lg"
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-                <div className="text-[9px] text-zinc-500 space-y-1 leading-tight">
-                  <p>
-                    Le QR code par défaut génère{' '}
-                    <code className="text-zinc-400 font-mono">
-                      localhost:3000
-                    </code>
-                    . Comme{' '}
-                    <code className="text-zinc-400 font-mono">localhost</code>{' '}
-                    désigne le Xiaomi lui-même, la page est inaccessible.
-                  </p>
-                  <p className="font-semibold text-zinc-400">
-                    Pour tester sur smartphone :
-                  </p>
-                  <ul className="list-disc list-inside space-y-0.5 text-zinc-500">
-                    <li>
-                      <strong className="text-zinc-400">
-                        Option 1 (Même Wi-Fi) :
-                      </strong>{' '}
-                      Renseignez l'IP locale de votre PC (ex:{' '}
-                      <code className="text-amber-500 font-mono text-[8px]">
-                        192.168.1.XX
-                      </code>
-                      ).
-                    </li>
-                    <li>
-                      <strong className="text-zinc-400">
-                        Option 2 (Tout réseau/4G) :
-                      </strong>{' '}
-                      Collez votre URL de déploiement en ligne{' '}
-                      <span className="text-zinc-400 font-mono font-bold">
-                        Vercel
-                      </span>{' '}
-                      ou l'URL de test ci-dessus !
-                    </li>
-                  </ul>
-                </div>
-              </div>
+            <div className="flex justify-center bg-white p-4 rounded-2xl border-4 border-zinc-950 w-fit mx-auto shadow-inner">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
+                  getQrUrl(),
+                )}`}
+                alt="QR Code de l'application"
+                className="w-40 h-40"
+                referrerPolicy="no-referrer"
+              />
             </div>
 
-            <div className="space-y-2 text-[11px] text-zinc-300">
-              <div className="flex items-start gap-1.5">
-                <span className="text-amber-400 font-bold">1.</span>
-                <span>
-                  Ouvrez l'application <strong>Appareil Photo</strong> ou le
-                  raccourci <strong>Scanner</strong> de votre Xiaomi.
-                </span>
-              </div>
-              <div className="flex items-start gap-1.5">
-                <span className="text-amber-400 font-bold">2.</span>
-                <span>
-                  Visez le code QR ci-dessus avec l'objectif de votre téléphone.
-                </span>
-              </div>
-              <div className="flex items-start gap-1.5">
-                <span className="text-amber-400 font-bold">3.</span>
-                <span>
-                  Cliquez sur le lien de redirection qui apparaît à l'écran !
-                </span>
-              </div>
+            <div className="text-[10.5px] text-zinc-300 text-center leading-normal px-2">
+              Visez ce QR code avec l'appareil photo de votre smartphone pour
+              continuer sur votre mobile.
             </div>
 
             <button
               onClick={() => setShowQrCode(false)}
-              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold py-2.5 rounded-xl transition-colors"
+              className="w-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold py-2.5 rounded-xl transition-colors cursor-pointer"
             >
               Fermer
             </button>
           </div>
         </div>
       )}
+
+      {/* Stripe checkout modal centrally managed */}
+      <StripeCheckoutModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        onSuccess={() => handleSetIsPremium(true)}
+        userEmail={currentUserEmail}
+      />
+
+      {/* Legal terms details modal */}
+      <LegalTermsModal
+        isOpen={isLegalOpen}
+        onClose={() => setIsLegalOpen(false)}
+      />
     </div>
   );
 }

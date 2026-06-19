@@ -20,6 +20,7 @@ interface YouthSavingHubProps {
   isPremium: boolean;
   setIsPremium: (status: boolean) => void;
   userEmail: string | null;
+  onSubscribeClick?: () => void;
 }
 
 export default function YouthSavingHub({
@@ -27,6 +28,7 @@ export default function YouthSavingHub({
   isPremium,
   setIsPremium,
   userEmail,
+  onSubscribeClick,
 }: YouthSavingHubProps) {
   // 1. Calculate active spend on fast-food/delivery/quick snacks
   const fastFoodKeywords = [
@@ -292,7 +294,7 @@ export default function YouthSavingHub({
 
         {/* 3. New Premium Tier Advantage Presentation Card */}
         <div
-          className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-950/20 rounded-2xl p-6 border border-amber-500/20 flex flex-col justify-between relative overflow-hidden"
+          className="bg-linear-to-br from-zinc-900 via-zinc-900 to-amber-950/20 rounded-2xl p-6 border border-amber-500/20 flex flex-col justify-between relative overflow-hidden"
           id="premium-proposal-card"
         >
           <div className="absolute -top-6 -right-6 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
@@ -369,8 +371,8 @@ export default function YouthSavingHub({
             {!isPremium ? (
               <button
                 type="button"
-                onClick={() => setIsCheckoutOpen(true)}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
+                onClick={() => onSubscribeClick?.()}
+                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
               >
                 Activer l'essai Premium
                 <ArrowRight
@@ -379,30 +381,29 @@ export default function YouthSavingHub({
                 />
               </button>
             ) : (
-              <div className="bg-zinc-950/90 border border-emerald-500/30 rounded-xl p-2.5 text-center flex flex-col items-center justify-center space-y-1">
+              <div className="bg-zinc-950/90 border border-emerald-500/30 rounded-xl p-3 text-center flex flex-col items-center justify-center space-y-1.5">
                 <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold">
                   <ShieldCheck size={14} />
                   <span>Mode Premium Actif (Simulé)</span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setIsPremium(false)}
-                  className="text-[10px] text-zinc-500 hover:text-zinc-400 underline cursor-pointer"
+                  onClick={() => {
+                    const confirmCancel = window.confirm(
+                      "Souhaitez-vous vraiment suspendre ou résilier votre abonnement Premium ? Votre compte repassera instantanément en offre d'essai gratuite.",
+                    );
+                    if (confirmCancel) {
+                      setIsPremium(false);
+                    }
+                  }}
+                  className="w-full bg-zinc-900 hover:bg-zinc-855 border border-zinc-800 hover:border-red-500/30 text-zinc-400 hover:text-red-400 text-[10px] font-bold py-1.5 px-3 rounded-lg transition-all cursor-pointer"
                 >
-                  Revenir à la version gratuite
+                  Résilier l'abonnement Premium (Terminer d'essai)
                 </button>
               </div>
             )}
           </div>
         </div>
-
-        {/* Dynamic Stripe simulated payment form modal integration */}
-        <StripeCheckoutModal
-          isOpen={isCheckoutOpen}
-          onClose={() => setIsCheckoutOpen(false)}
-          onSuccess={() => setIsPremium(true)}
-          userEmail={userEmail}
-        />
       </div>
 
       {/* 4. User Gamification Tiers */}
