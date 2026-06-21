@@ -1,7 +1,6 @@
-import React from 'react';
 import { Receipt, ReceiptCategory } from '../types';
 import { CATEGORY_COLORS } from '../data/demoReceipts';
-import { TrendingUp, CreditCard, ShoppingBag, PieChart } from 'lucide-react';
+import { Sparkles, CreditCard, ShoppingBag, PieChart } from 'lucide-react';
 
 interface StatsOverviewProps {
   receipts: Receipt[];
@@ -120,9 +119,10 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
           )}
         </div>
         <div className="pt-4 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
-          <span>Tendance :</span>
+          <span>Analyse :</span>
           <span className="flex items-center gap-1 font-semibold text-emerald-400">
-            <TrendingUp size={14} /> Analyse en temps réel
+            <Sparkles size={14} className="animate-pulse text-emerald-400" />{' '}
+            Automatisée par l'IA
           </span>
         </div>
       </div>
@@ -140,7 +140,7 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
             <PieChart size={16} />
           </div>
         </div>
-        <div className="space-y-3 max-h-[140px] overflow-y-auto pr-1">
+        <div className="space-y-3 max-h-35 overflow-y-auto pr-1">
           {totalSpent > 0 ? (
             sortedCategories
               .filter((c) => c.amount > 0)

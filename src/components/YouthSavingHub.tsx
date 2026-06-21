@@ -196,7 +196,7 @@ export default function YouthSavingHub({
           <div className="mt-6 pt-4 border-t border-zinc-900 flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 size={13} className="text-emerald-400" />
-              <span>Optimisation en cuisine</span>
+              <span>Défi repas fait-maison</span>
             </div>
             <span className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] px-2.5 py-1 rounded-lg font-semibold uppercase tracking-wider">
               Objectif Mensuel
@@ -294,7 +294,7 @@ export default function YouthSavingHub({
 
         {/* 3. New Premium Tier Advantage Presentation Card */}
         <div
-          className="bg-linear-to-br from-zinc-900 via-zinc-900 to-amber-950/20 rounded-2xl p-6 border border-amber-500/20 flex flex-col justify-between relative overflow-hidden"
+          className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-950/20 rounded-2xl p-6 border border-amber-500/20 flex flex-col justify-between relative overflow-hidden"
           id="premium-proposal-card"
         >
           <div className="absolute -top-6 -right-6 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
@@ -372,7 +372,7 @@ export default function YouthSavingHub({
               <button
                 type="button"
                 onClick={() => onSubscribeClick?.()}
-                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
               >
                 Activer l'essai Premium
                 <ArrowRight

@@ -21,13 +21,9 @@ import {
 import {
   Scan,
   Sparkles,
-  ReceiptText,
   ShieldCheck,
   LogOut,
   User,
-  Cloud,
-  CloudOff,
-  QrCode,
   Smartphone,
   X,
   AlertTriangle,
@@ -494,7 +490,7 @@ export default function App() {
           </div>
           <div className="shrink-0 flex items-center gap-1.5 text-xs text-emerald-300 font-bold bg-emerald-950/40 border border-emerald-900/50 px-4 py-2.5 rounded-2xl">
             <Sparkles size={14} className="text-emerald-400 animate-pulse" />{' '}
-            Protection des flux active
+            Données sécurisées
           </div>
         </div>
 
