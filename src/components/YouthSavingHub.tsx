@@ -12,6 +12,10 @@ import {
   ArrowRight,
   ShieldCheck,
   Check,
+  Tv,
+  Music,
+  Plus,
+  ShoppingBag,
 } from 'lucide-react';
 import StripeCheckoutModal from './StripeCheckoutModal';
 
@@ -21,6 +25,7 @@ interface YouthSavingHubProps {
   setIsPremium: (status: boolean) => void;
   userEmail: string | null;
   onSubscribeClick?: () => void;
+  onAddSubscriptionReceipt?: (name: string, price: number) => void;
 }
 
 export default function YouthSavingHub({
@@ -29,6 +34,7 @@ export default function YouthSavingHub({
   setIsPremium,
   userEmail,
   onSubscribeClick,
+  onAddSubscriptionReceipt,
 }: YouthSavingHubProps) {
   // 1. Calculate active spend on fast-food/delivery/quick snacks
   const fastFoodKeywords = [
@@ -75,11 +81,52 @@ export default function YouthSavingHub({
 
   // 2. Interactive simulator states
   const [coffeeCount, setCoffeeCount] = useState(4); // coffees per week
-  const [subsCount, setSubsCount] = useState(3); // subscriptions (Netflix, Spotify, gym...)
+  const [subsCount, setSubsCount] = useState(1); // additional sliding general subscriptions
+
+  // Track popularity configurations
+  const subscriptionConfig = [
+    { name: 'Netflix', keywords: ['netflix'], price: 13.49, icon: Tv },
+    {
+      name: 'Amazon Prime',
+      keywords: ['prime', 'amazon prime', 'amazonprime'],
+      price: 6.99,
+      icon: ShoppingBag,
+    },
+    {
+      name: 'Canal+',
+      keywords: ['canal', 'canal+', 'canal plus', 'mycanal'],
+      price: 22.99,
+      icon: Tv,
+    },
+    { name: 'Spotify', keywords: ['spotify'], price: 10.99, icon: Music },
+  ];
+
+  // Dynamic matching from scanned or added receipts
+  const detectedSubscriptions = subscriptionConfig.map((config) => {
+    const match = receipts.find(
+      (r) =>
+        config.keywords.some((kw) => r.merchant.toLowerCase().includes(kw)) ||
+        r.items.some((item) =>
+          config.keywords.some((kw) => item.name.toLowerCase().includes(kw)),
+        ),
+    );
+    return {
+      ...config,
+      detected: !!match,
+      amount: match ? match.totalAmount : config.price,
+      date: match ? match.date : null,
+      id: match ? match.id : null,
+    };
+  });
+
+  // Calculate costs based on genuine detected abonnements + generic simulation count
+  const detectedSubsCost = detectedSubscriptions
+    .filter((s) => s.detected)
+    .reduce((sum, s) => sum + s.amount, 0);
 
   const weeklyCoffeeCost = coffeeCount * 3.5;
   const monthlyCoffeeCost = weeklyCoffeeCost * 4.33;
-  const monthlySubsCost = subsCount * 12.99;
+  const monthlySubsCost = subsCount * 12.99 + detectedSubsCost;
   const totalMicroSpend = monthlyCoffeeCost + monthlySubsCost;
   const yearlyPotentialSavings = totalMicroSpend * 12;
 
@@ -117,7 +164,7 @@ export default function YouthSavingHub({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 1. Gamified Saving Challenge */}
         <div
-          className="bg-gradient-to-br from-zinc-900 to-zinc-950/80 rounded-2xl p-6 border border-zinc-800/80 flex flex-col justify-between relative overflow-hidden"
+          className="bg-linear-to-br from-zinc-900 to-zinc-950/80 rounded-2xl p-6 border border-zinc-800/80 flex flex-col justify-between relative overflow-hidden"
           id="challenge-card"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
@@ -215,7 +262,7 @@ export default function YouthSavingHub({
                 <Coins size={16} />
               </span>
               <div>
-                <h3 className="text-sm font-bold text-white tracking-tight leading-none">
+                <h3 className="text-sm font-bold text-white tracking-tight leading-none font-sans">
                   Simulateur de Petits Frais
                 </h3>
                 <span className="text-[10px] text-zinc-400">
@@ -224,7 +271,7 @@ export default function YouthSavingHub({
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 font-sans">
               {/* Range 1: Coffee & snacks per week */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-semibold text-zinc-300">
@@ -251,8 +298,8 @@ export default function YouthSavingHub({
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs font-semibold text-zinc-300">
                   <span className="flex items-center gap-1">
-                    <Smartphone size={13} className="text-zinc-500" />{' '}
-                    Abonnements actifs
+                    <Smartphone size={13} className="text-zinc-500" /> Autres
+                    services simulés
                   </span>
                   <span className="text-white bg-zinc-950 px-2 py-0.5 rounded font-mono text-[10px] border border-zinc-800">
                     {subsCount} services
@@ -261,18 +308,114 @@ export default function YouthSavingHub({
                 <input
                   type="range"
                   min="0"
-                  max="8"
+                  max="5"
                   step="1"
                   value={subsCount}
                   onChange={(e) => setSubsCount(Number(e.target.value))}
                   className="w-full h-1 bg-zinc-950 rounded-lg appearance-none cursor-pointer accent-emerald-500"
                 />
               </div>
+
+              {/* Real / Detected Subscriptions Sub-section */}
+              <div className="pt-3 border-t border-zinc-800/60 space-y-2">
+                <div className="flex justify-between items-center text-[11px] font-bold text-zinc-400 uppercase tracking-wider">
+                  <span>Traqueur d'Abonnements</span>
+                  <span className="text-[9px] text-zinc-500 lowercase font-medium">
+                    Détection & Rapprochement
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  {detectedSubscriptions.map((sub) => {
+                    const IconComponent = sub.icon;
+                    return (
+                      <div
+                        key={sub.name}
+                        className={`flex flex-col justify-between p-2 rounded-xl border transition-all ${
+                          sub.detected
+                            ? 'bg-emerald-950/20 border-emerald-500/20 text-white shadow-sm shadow-emerald-900/10'
+                            : 'bg-zinc-950/40 border-zinc-900 text-zinc-500 hover:border-zinc-850'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 min-w-0">
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span
+                              className={`p-1 rounded-md shrink-0 ${
+                                sub.detected
+                                  ? 'text-emerald-400 bg-emerald-500/10'
+                                  : 'text-zinc-600 bg-zinc-900'
+                              }`}
+                            >
+                              <IconComponent size={11} />
+                            </span>
+                            <span className="text-[10px] font-bold truncate leading-none">
+                              {sub.name}
+                            </span>
+                          </div>
+
+                          {sub.detected ? (
+                            <span
+                              className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"
+                              title="Actif et détecté"
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                onAddSubscriptionReceipt?.(sub.name, sub.price)
+                              }
+                              className="text-[9px] text-zinc-500 hover:text-emerald-400 bg-zinc-900 hover:bg-zinc-800 p-0.5 rounded cursor-pointer transition-colors"
+                              title="Déclarer ce prélèvement"
+                            >
+                              <Plus size={10} />
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="mt-1.5 flex items-center justify-between text-[9px] font-mono leading-none">
+                          <span
+                            className={
+                              sub.detected
+                                ? 'text-emerald-300 font-semibold'
+                                : 'text-zinc-650'
+                            }
+                          >
+                            {sub.amount.toFixed(2)} €
+                          </span>
+                          <span
+                            className={`text-[7px] px-1 rounded-sm uppercase font-semibold leading-none ${
+                              sub.detected
+                                ? 'bg-emerald-950/80 text-emerald-400'
+                                : 'bg-zinc-900/60 text-zinc-600'
+                            }`}
+                          >
+                            {sub.detected ? 'Détecté' : 'Absent'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <p className="text-[9px] text-zinc-500 leading-normal italic select-none">
+                  {detectedSubsCost > 0
+                    ? `🎯 ${detectedSubscriptions
+                        .filter((s) => s.detected)
+                        .map((s) => s.name)
+                        .join(', ')} détecté${
+                        detectedSubscriptions.filter((s) => s.detected).length >
+                        1
+                          ? 's'
+                          : ''
+                      } via vos tickets !`
+                    : "💡 Vos abonnements (ex. Netflix, Prime, Canal+, Spotify) s'activeront en vert dès détection."}
+                </p>
+              </div>
             </div>
           </div>
 
           {/* Dynamic simulation outcomes */}
-          <div className="mt-6 pt-4 border-t border-zinc-800 space-y-1.5">
+          <div className="mt-5 pt-3.5 border-t border-zinc-800 space-y-1.5 font-sans">
             <div className="flex justify-between text-xs text-zinc-400">
               <span>Coût mensuel identifié ：</span>
               <span className="font-semibold text-zinc-200 font-mono">
@@ -294,7 +437,7 @@ export default function YouthSavingHub({
 
         {/* 3. New Premium Tier Advantage Presentation Card */}
         <div
-          className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-950/20 rounded-2xl p-6 border border-amber-500/20 flex flex-col justify-between relative overflow-hidden"
+          className="bg-linear-to-br from-zinc-900 via-zinc-900 to-amber-950/20 rounded-2xl p-6 border border-amber-500/20 flex flex-col justify-between relative overflow-hidden"
           id="premium-proposal-card"
         >
           <div className="absolute -top-6 -right-6 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
@@ -372,7 +515,7 @@ export default function YouthSavingHub({
               <button
                 type="button"
                 onClick={() => onSubscribeClick?.()}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
+                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
               >
                 Activer l'essai Premium
                 <ArrowRight
