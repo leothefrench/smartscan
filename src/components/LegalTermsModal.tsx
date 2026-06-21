@@ -63,25 +63,33 @@ export default function LegalTermsModal({
               <Scale size={14} className="text-amber-400" />
               2. Exécution Immédiate & Renonciation à la Rétractation
             </h3>
-            <p className="leading-relaxed text-zinc-400 font-medium">
+            <p className="leading-relaxed text-zinc-305 font-medium">
               Conformément à la directive européenne sur les droits des
               consommateurs (transposée en France à l'
               <strong>Article L221-28 13° du Code de la consommation</strong>) :
             </p>
-            <p className="leading-relaxed text-zinc-400 bg-zinc-900/60 p-2.5 rounded-xl border border-zinc-900 text-[11px]">
+            <div
+              role="region"
+              aria-label="Consentement exprès de renonciation au droit de rétractation"
+              className="leading-relaxed text-zinc-100 bg-zinc-900 border-l-4 border-amber-500 p-4 rounded-r-xl border-y border-r border-zinc-850 my-3 text-[11px] shadow-sm select-auto"
+            >
+              <span className="text-amber-400 font-bold block mb-1">
+                🔴 Dérogations & Renonciation d'exécution immédiate :
+              </span>
               En demandant l'accès immédiat à l'abonnement Premium PRO dès la
               souscription (traitement OCR instantané, exports illimités),{' '}
-              <strong>
+              <strong className="text-white underline decoration-amber-500/50 decoration-2 underline-offset-2">
                 l'utilisateur consent expressément à ce que le service débute
                 immédiatement et renonce de fait à son droit de rétractation
                 légal de 14 jours
               </strong>
               .
-            </p>
+            </div>
             <p className="leading-relaxed text-zinc-400">
               Cette case de consentement obligatoire cochée lors de la
               confirmation du panier valide légalement cette renonciation pour
-              permettre la fourniture immédiate du contenu numérique.
+              permettre la fourniture immédiate du contenu numérique de manière
+              instantanée.
             </p>
           </div>
 

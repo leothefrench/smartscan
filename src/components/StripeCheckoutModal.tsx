@@ -154,25 +154,55 @@ export default function StripeCheckoutModal({
             </div>
 
             {/* Legal Waiver Consent Checkbox */}
-            <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-4 space-y-3">
-              <label className="flex items-start gap-3 cursor-pointer group select-none">
-                <input
-                  type="checkbox"
-                  checked={hasAcknowledgedWithdrawal}
-                  onChange={(e) => {
-                    setHasAcknowledgedWithdrawal(e.target.checked);
-                    setErrorMsg('');
-                  }}
-                  className="mt-0.5 w-4 h-4 rounded border-zinc-800 bg-zinc-900 text-amber-500 focus:ring-amber-500/30 focus:ring-offset-0 focus:ring-2 accent-amber-500 cursor-pointer"
-                />
-                <span className="text-[10px] text-zinc-400 group-hover:text-zinc-300 leading-normal">
-                  J’autorise l’exécution immédiate du service Premium PRO et je
-                  renonce expressément à mon droit de rétractation de 14 jours,
-                  conformément à la réglementation européenne (Art. L221-28 13°
-                  du Code de la consommation) pour profiter instantanément de
-                  l’ensemble de ses fonctionnalités de traitement d'images OCR
-                  et d'exports comptables.
-                </span>
+            <div
+              className={`p-4 rounded-2xl transition-all duration-200 border space-y-3 ${
+                hasAcknowledgedWithdrawal
+                  ? 'bg-zinc-900/80 border-emerald-500/30 shadow-md shadow-emerald-950/10'
+                  : 'bg-amber-950/20 border-amber-500/30 shadow-md'
+              }`}
+            >
+              <label
+                className="flex items-start gap-3.5 cursor-pointer group select-none"
+                htmlFor="waiver-consent-checkbox"
+              >
+                <div className="relative flex items-center shrink-0 mt-0.5">
+                  <input
+                    id="waiver-consent-checkbox"
+                    type="checkbox"
+                    checked={hasAcknowledgedWithdrawal}
+                    onChange={(e) => {
+                      setHasAcknowledgedWithdrawal(e.target.checked);
+                      setErrorMsg('');
+                    }}
+                    required
+                    aria-required="true"
+                    aria-checked={hasAcknowledgedWithdrawal}
+                    className="w-5 h-5 rounded border-zinc-700 bg-zinc-900 text-amber-500 focus:ring-amber-500/40 focus:ring-offset-0 focus:ring-2 accent-amber-500 cursor-pointer transition-all shrink-0"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[11px] font-bold text-white tracking-wide uppercase flex items-center gap-1">
+                    {!hasAcknowledgedWithdrawal && (
+                      <span className="text-amber-400 animate-pulse">
+                        ⚠️ Action requise :
+                      </span>
+                    )}
+                    <span className="text-zinc-100">
+                      Consentement obligatoire
+                    </span>
+                  </span>
+                  <span className="text-[11px] text-zinc-100 font-medium leading-relaxed block group-hover:text-white transition-colors">
+                    J’autorise expressément l’exécution immédiate du service
+                    Premium PRO dès la souscription et je{' '}
+                    <strong className="text-amber-300 font-extrabold underline underline-offset-1 decoration-amber-400/50">
+                      renonce expressément à mon droit de rétractation de 14
+                      jours
+                    </strong>{' '}
+                    (Art. L221-28 13° du Code de la consommation) pour
+                    bénéficier instantanément de l’OCR intelligent et des
+                    exports.
+                  </span>
+                </div>
               </label>
             </div>
 
@@ -182,7 +212,7 @@ export default function StripeCheckoutModal({
                 type="button"
                 onClick={handleRealStripeRedirect}
                 disabled={realStripeLoading || !hasAcknowledgedWithdrawal}
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
+                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
               >
                 {realStripeLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-zinc-950" />
