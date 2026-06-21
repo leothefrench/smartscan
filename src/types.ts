@@ -12,14 +12,14 @@ export interface ReceiptItem {
 }
 
 export type ReceiptCategory =
-  | "Alimentation"
-  | "Loisirs & Culture"
-  | "Santé & Hygiène"
-  | "Mode & Habillement"
-  | "Électronique & Maison"
-  | "Transport & Carburant"
-  | "Services & Factures"
-  | "Autre";
+  | 'Alimentation'
+  | 'Loisirs & Culture'
+  | 'Santé & Hygiène'
+  | 'Mode & Habillement'
+  | 'Électronique & Maison'
+  | 'Transport & Carburant'
+  | 'Services & Factures'
+  | 'Autre';
 
 export interface Receipt {
   id: string;
@@ -32,6 +32,8 @@ export interface Receipt {
   scannedAt: string; // ISO string when user scanned it
   imageUrl?: string; // local preview base64
   rawResponse?: string; // analytical notes or insights about the purchases
+  isRecurring?: boolean;
+  recurrence?: 'weekly' | 'monthly' | 'yearly';
 }
 
 export interface ScanningStats {

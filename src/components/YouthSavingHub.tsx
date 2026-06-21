@@ -16,6 +16,8 @@ import {
   Music,
   Plus,
   ShoppingBag,
+  Trash2,
+  X,
 } from 'lucide-react';
 import StripeCheckoutModal from './StripeCheckoutModal';
 
@@ -26,6 +28,7 @@ interface YouthSavingHubProps {
   userEmail: string | null;
   onSubscribeClick?: () => void;
   onAddSubscriptionReceipt?: (name: string, price: number) => void;
+  onDeleteReceipt?: (id: string) => void;
 }
 
 export default function YouthSavingHub({
@@ -35,6 +38,7 @@ export default function YouthSavingHub({
   userEmail,
   onSubscribeClick,
   onAddSubscriptionReceipt,
+  onDeleteReceipt,
 }: YouthSavingHubProps) {
   // 1. Calculate active spend on fast-food/delivery/quick snacks
   const fastFoodKeywords = [
@@ -83,6 +87,14 @@ export default function YouthSavingHub({
   const [coffeeCount, setCoffeeCount] = useState(4); // coffees per week
   const [subsCount, setSubsCount] = useState(1); // additional sliding general subscriptions
 
+  // Notification status for Resiliation / Opération Annuelle
+  const [savingsNotification, setSavingsNotification] = useState<{
+    name: string;
+    amount: number;
+    freq: string;
+    annualAmount: number;
+  } | null>(null);
+
   // Track popularity configurations
   const subscriptionConfig = [
     { name: 'Netflix', keywords: ['netflix'], price: 13.49, icon: Tv },
@@ -101,8 +113,8 @@ export default function YouthSavingHub({
     { name: 'Spotify', keywords: ['spotify'], price: 10.99, icon: Music },
   ];
 
-  // Dynamic matching from scanned or added receipts
-  const detectedSubscriptions = subscriptionConfig.map((config) => {
+  // Dynamic matching from scanned or added receipts (popular templates)
+  const templatesWithMatch = subscriptionConfig.map((config) => {
     const match = receipts.find(
       (r) =>
         config.keywords.some((kw) => r.merchant.toLowerCase().includes(kw)) ||
@@ -111,24 +123,113 @@ export default function YouthSavingHub({
         ),
     );
     return {
-      ...config,
+      name: config.name,
+      price: config.price,
+      icon: config.icon,
       detected: !!match,
       amount: match ? match.totalAmount : config.price,
       date: match ? match.date : null,
       id: match ? match.id : null,
+      recurrence: match?.recurrence || 'monthly',
     };
   });
 
-  // Calculate costs based on genuine detected abonnements + generic simulation count
-  const detectedSubsCost = detectedSubscriptions
+  // Extract custom recurring subscriptions (e.g. Neon, Fitness, Coaching)
+  const customRecurringReceipts = receipts.filter((r) => r.isRecurring);
+  const matchedReceiptIds = new Set(
+    templatesWithMatch.filter((t) => t.id).map((t) => t.id),
+  );
+
+  const customRecurringList = customRecurringReceipts
+    .filter((r) => !matchedReceiptIds.has(r.id))
+    .map((r) => {
+      let IconComponent = Smartphone;
+      const lowerM = r.merchant.toLowerCase();
+      if (
+        lowerM.includes('gym') ||
+        lowerM.includes('sport') ||
+        lowerM.includes('fit') ||
+        lowerM.includes('salle')
+      )
+        IconComponent = Target;
+      else if (lowerM.includes('coaching') || lowerM.includes('coach'))
+        IconComponent = Award;
+      else if (
+        lowerM.includes('elec') ||
+        lowerM.includes('edf') ||
+        lowerM.includes('eau') ||
+        lowerM.includes('facture')
+      )
+        IconComponent = Zap;
+
+      return {
+        name: r.merchant,
+        price: r.totalAmount,
+        icon: IconComponent,
+        detected: true,
+        amount: r.totalAmount,
+        date: r.date,
+        id: r.id,
+        recurrence: r.recurrence || 'monthly',
+      };
+    });
+
+  // Merge lists to keep the UI unified
+  const allDetectedSubscriptions = [
+    ...templatesWithMatch,
+    ...customRecurringList,
+  ];
+
+  // Calculate costs based on premium active subscriptions
+  const detectedSubsCost = allDetectedSubscriptions
     .filter((s) => s.detected)
-    .reduce((sum, s) => sum + s.amount, 0);
+    .reduce((sum, s) => {
+      const freq = s.recurrence || 'monthly';
+      if (freq === 'weekly') {
+        return sum + s.amount * 4.33;
+      } else if (freq === 'yearly') {
+        return sum + s.amount / 12;
+      } else {
+        return sum + s.amount;
+      }
+    }, 0);
 
   const weeklyCoffeeCost = coffeeCount * 3.5;
   const monthlyCoffeeCost = weeklyCoffeeCost * 4.33;
   const monthlySubsCost = subsCount * 12.99 + detectedSubsCost;
   const totalMicroSpend = monthlyCoffeeCost + monthlySubsCost;
   const yearlyPotentialSavings = totalMicroSpend * 12;
+
+  // Let's create an elegant cancel callback that computes the "Opération Annuelle" savings
+  const handleCancelSubscription = (
+    id: string,
+    name: string,
+    amount: number,
+    recurrence: string,
+  ) => {
+    let annual = amount;
+    if (recurrence === 'weekly') {
+      annual = amount * 52.14;
+    } else if (recurrence === 'monthly') {
+      annual = amount * 12;
+    }
+
+    setSavingsNotification({
+      name,
+      amount,
+      freq:
+        recurrence === 'weekly'
+          ? 'hebdomadaire'
+          : recurrence === 'yearly'
+          ? 'annuelle'
+          : 'mensuelle',
+      annualAmount: Math.round(annual),
+    });
+
+    if (onDeleteReceipt && id) {
+      onDeleteReceipt(id);
+    }
+  };
 
   // 3. Premium Checked Controls
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
@@ -164,7 +265,7 @@ export default function YouthSavingHub({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* 1. Gamified Saving Challenge */}
         <div
-          className="bg-linear-to-br from-zinc-900 to-zinc-950/80 rounded-2xl p-6 border border-zinc-800/80 flex flex-col justify-between relative overflow-hidden"
+          className="bg-gradient-to-br from-zinc-900 to-zinc-950/80 rounded-2xl p-6 border border-zinc-800/80 flex flex-col justify-between relative overflow-hidden"
           id="challenge-card"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
@@ -325,8 +426,42 @@ export default function YouthSavingHub({
                   </span>
                 </div>
 
+                {savingsNotification && (
+                  <div className="p-3 bg-emerald-950/65 border border-emerald-500/20 text-emerald-200 rounded-xl text-[10px] relative animate-fadeIn shadow-sm shadow-emerald-950/20 leading-relaxed font-sans">
+                    <button
+                      type="button"
+                      onClick={() => setSavingsNotification(null)}
+                      className="absolute top-2 right-2 text-emerald-400/80 hover:text-white transition-colors cursor-pointer"
+                    >
+                      <X size={11} />
+                    </button>
+                    <div className="font-bold text-emerald-300 flex items-center gap-1 mb-1">
+                      <Sparkles
+                        size={11}
+                        className="text-emerald-400 animate-pulse"
+                      />
+                      <span>Opération Annuelle Réussie !</span>
+                    </div>
+                    <div>
+                      En supprimant l'abonnement{' '}
+                      <strong className="text-white">
+                        {savingsNotification.name}
+                      </strong>
+                      , vous économisez{' '}
+                      <strong className="text-white font-mono">
+                        {savingsNotification.amount.toFixed(2)} €
+                      </strong>{' '}
+                      {savingsNotification.freq}. Cela représente{' '}
+                      <strong className="text-emerald-300 font-bold">
+                        +{savingsNotification.annualAmount} € d'épargne par an
+                      </strong>{' '}
+                      qui cessent d'être gaspillés !
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-1.5">
-                  {detectedSubscriptions.map((sub) => {
+                  {allDetectedSubscriptions.map((sub) => {
                     const IconComponent = sub.icon;
                     return (
                       <div
@@ -354,10 +489,29 @@ export default function YouthSavingHub({
                           </div>
 
                           {sub.detected ? (
-                            <span
-                              className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0"
-                              title="Actif et détecté"
-                            />
+                            <div className="flex items-center gap-1.5 shrink-0">
+                              <span
+                                className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse"
+                                title="Actif et détecté"
+                              />
+                              {sub.id && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleCancelSubscription(
+                                      sub.id!,
+                                      sub.name,
+                                      sub.amount,
+                                      sub.recurrence,
+                                    )
+                                  }
+                                  className="text-zinc-500 hover:text-red-400 p-0.5 rounded cursor-pointer transition-colors"
+                                  title="Arrêter cet abonnement (Opération Annuelle)"
+                                >
+                                  <Trash2 size={10} />
+                                </button>
+                              )}
+                            </div>
                           ) : (
                             <button
                               type="button"
@@ -381,6 +535,13 @@ export default function YouthSavingHub({
                             }
                           >
                             {sub.amount.toFixed(2)} €
+                            <span className="text-[7.5px] font-normal text-zinc-400 font-sans ml-0.5">
+                              {sub.recurrence === 'weekly'
+                                ? '/sem'
+                                : sub.recurrence === 'yearly'
+                                ? '/an'
+                                : '/mois'}
+                            </span>
                           </span>
                           <span
                             className={`text-[7px] px-1 rounded-sm uppercase font-semibold leading-none ${
@@ -399,16 +560,16 @@ export default function YouthSavingHub({
 
                 <p className="text-[9px] text-zinc-500 leading-normal italic select-none">
                   {detectedSubsCost > 0
-                    ? `🎯 ${detectedSubscriptions
+                    ? `🎯 ${allDetectedSubscriptions
                         .filter((s) => s.detected)
                         .map((s) => s.name)
                         .join(', ')} détecté${
-                        detectedSubscriptions.filter((s) => s.detected).length >
-                        1
+                        allDetectedSubscriptions.filter((s) => s.detected)
+                          .length > 1
                           ? 's'
                           : ''
-                      } via vos tickets !`
-                    : "💡 Vos abonnements (ex. Netflix, Prime, Canal+, Spotify) s'activeront en vert dès détection."}
+                      } via vos charges récurrentes.`
+                    : "💡 Vos abonnements (ex. Netflix, Prime, Canal+, salle de sport) s'activeront dès détection ou déclaration."}
                 </p>
               </div>
             </div>
@@ -437,7 +598,7 @@ export default function YouthSavingHub({
 
         {/* 3. New Premium Tier Advantage Presentation Card */}
         <div
-          className="bg-linear-to-br from-zinc-900 via-zinc-900 to-amber-950/20 rounded-2xl p-6 border border-amber-500/20 flex flex-col justify-between relative overflow-hidden"
+          className="bg-gradient-to-br from-zinc-900 via-zinc-900 to-amber-950/20 rounded-2xl p-6 border border-amber-500/20 flex flex-col justify-between relative overflow-hidden"
           id="premium-proposal-card"
         >
           <div className="absolute -top-6 -right-6 w-24 h-24 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
@@ -515,7 +676,7 @@ export default function YouthSavingHub({
               <button
                 type="button"
                 onClick={() => onSubscribeClick?.()}
-                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-zinc-950 text-xs font-bold py-2.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 transition-all flex items-center justify-center gap-1 group active:scale-[0.98] cursor-pointer"
               >
                 Activer l'essai Premium
                 <ArrowRight

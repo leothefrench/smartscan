@@ -3,8 +3,8 @@
  */
 
 export function sanitizeInput(input: string): string {
-  if (!input) return "";
-  
+  if (!input) return '';
+
   // 1. Defend against common SQL Injection payloads
   let sanitized = input;
   const sqlKeywords = [
@@ -27,25 +27,21 @@ export function sanitizeInput(input: string): string {
   ];
 
   sqlKeywords.forEach((regex) => {
-    sanitized = sanitized.replace(regex, "");
+    sanitized = sanitized.replace(regex, '');
   });
 
   // 2. Defend against Cross-Site Scripting (XSS)
   sanitized = sanitized
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-    .replace(/javascript:/gi, "")
-    .replace(/onload=/gi, "")
-    .replace(/onerror=/gi, "")
-    .replace(/onclick=/gi, "");
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/onload=/gi, '')
+    .replace(/onerror=/gi, '')
+    .replace(/onclick=/gi, '');
 
-  // Escape HTML characters for maximum rendering safety
-  sanitized = sanitized
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
-    .replace(/\//g, "&#x2F;");
+  // Defend against HTML tags and script injection by stripping < and >.
+  // We do NOT escape safe characters like ', ", /, & because React natively handles
+  // safe rendering / auto-escaping when rendering text, and manual escaping causes double-escaping bugs in the UI.
+  sanitized = sanitized.replace(/</g, '').replace(/>/g, '');
 
   return sanitized.trim();
 }
