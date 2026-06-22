@@ -17,7 +17,7 @@ export default function LegalTermsModal({
       className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4"
       id="legal-terms-modal"
     >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-lg max-h-[85vh] flex flex-col overflow-hidden relative shadow-2xl">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-lg max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden relative shadow-2xl">
         {/* Absolute top right close cross */}
         <button
           onClick={onClose}

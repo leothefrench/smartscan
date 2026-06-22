@@ -75,7 +75,7 @@ export default function StripeCheckoutModal({
       className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
       id="stripe-checkout-modal-container"
     >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-md flex flex-col overflow-hidden relative shadow-2xl shadow-amber-950/5">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-3xl w-full max-w-md max-h-[90vh] sm:max-h-[85vh] flex flex-col overflow-hidden relative shadow-2xl shadow-amber-950/5">
         {/* Header Close button */}
         {!realStripeLoading && (
           <button
@@ -181,7 +181,7 @@ export default function StripeCheckoutModal({
                   />
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[11px] font-bold text-white tracking-wide uppercase flex items-center gap-1">
+                  <span className="flex text-[11px] font-bold text-white tracking-wide uppercase items-center gap-1">
                     {!hasAcknowledgedWithdrawal && (
                       <span className="text-amber-400 animate-pulse">
                         ⚠️ Action requise :
@@ -212,7 +212,7 @@ export default function StripeCheckoutModal({
                 type="button"
                 onClick={handleRealStripeRedirect}
                 disabled={realStripeLoading || !hasAcknowledgedWithdrawal}
-                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
               >
                 {realStripeLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-zinc-950" />
