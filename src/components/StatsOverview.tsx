@@ -41,7 +41,7 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
     >
       {/* Total Spent Bento Card */}
       <div
-        className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 flex flex-col justify-between"
+        className="bg-zinc-900 rounded-2xl p-6 border border-zinc-700 flex flex-col justify-between"
         id="stat-card-total"
       >
         <div className="flex items-center justify-between">
@@ -67,7 +67,7 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
             numérisé{totalCount > 1 ? 's' : ''}
           </p>
         </div>
-        <div className="pt-4 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+        <div className="pt-4 border-t border-zinc-700 flex items-center justify-between text-xs text-zinc-400">
           <span>Panier moyen par ticket :</span>
           <span className="font-bold text-white">
             {averageSpent.toLocaleString('fr-FR', {
@@ -80,14 +80,14 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
 
       {/* Main Focus / Top Spending Category */}
       <div
-        className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 flex flex-col justify-between"
+        className="bg-zinc-900 rounded-2xl p-6 border border-zinc-700 flex flex-col justify-between"
         id="stat-card-focus"
       >
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
             Poste Principal
           </span>
-          <div className="p-2.5 bg-zinc-800 rounded-xl text-zinc-300">
+          <div className="p-2.5 bg-zinc-800 border border-zinc-700 rounded-xl text-zinc-300">
             <ShoppingBag size={18} />
           </div>
         </div>
@@ -118,7 +118,7 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
             </>
           )}
         </div>
-        <div className="pt-4 border-t border-zinc-800 flex items-center justify-between text-xs text-zinc-400">
+        <div className="pt-4 border-t border-zinc-700 flex items-center justify-between text-xs text-zinc-400">
           <span>Analyse :</span>
           <span className="flex items-center gap-1 font-semibold text-emerald-400">
             <Sparkles size={14} className="animate-pulse text-emerald-400" />{' '}
@@ -129,18 +129,18 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
 
       {/* Category Distribution Bento Card */}
       <div
-        className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800"
+        className="bg-zinc-900 rounded-2xl p-6 border border-zinc-700"
         id="stat-card-categories"
       >
         <div className="flex items-center justify-between mb-4">
           <span className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
             Répartition des Coûts
           </span>
-          <div className="p-2 bg-zinc-800/80 rounded-lg text-zinc-300 border border-zinc-800">
+          <div className="p-2 bg-zinc-800/80 rounded-lg text-zinc-300 border border-zinc-700">
             <PieChart size={16} />
           </div>
         </div>
-        <div className="space-y-3 max-h-35 overflow-y-auto pr-1">
+        <div className="space-y-3 max-h-[140px] overflow-y-auto pr-1">
           {totalSpent > 0 ? (
             sortedCategories
               .filter((c) => c.amount > 0)
@@ -148,10 +148,10 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
                 const colors =
                   CATEGORY_COLORS[cat.name] || CATEGORY_COLORS['Autre'];
                 // Map background color values beautifully for high contrast in dark mode
-                let customBg = 'bg-zinc-600';
+                let customBg = 'bg-zinc-650';
                 const catStr = String(cat.name);
                 if (catStr.includes('Alimentation'))
-                  customBg = 'bg-emerald-500';
+                  customBg = 'bg-emerald-555';
                 else if (catStr.includes('Transport')) customBg = 'bg-blue-500';
                 else if (catStr.includes('Loisirs')) customBg = 'bg-purple-500';
                 else if (catStr.includes('Maison')) customBg = 'bg-orange-500';
@@ -163,7 +163,7 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
                 return (
                   <div key={cat.name} className="space-y-1">
                     <div className="flex justify-between text-xs">
-                      <span className="font-medium text-zinc-300">
+                      <span className="font-medium text-zinc-350">
                         {cat.name}
                       </span>
                       <span className="text-zinc-400 font-mono font-medium">
@@ -173,7 +173,7 @@ export default function StatsOverview({ receipts }: StatsOverviewProps) {
                         })}
                       </span>
                     </div>
-                    <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-800/60">
+                    <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden border border-zinc-700/80">
                       <div
                         className={`h-full ${customBg} rounded-full transition-all duration-500`}
                         style={{ width: `${cat.percentage}%` }}

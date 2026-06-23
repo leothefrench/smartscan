@@ -183,7 +183,7 @@ export default function YouthSavingHub({
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         {/* 1. Gamified Saving Challenge */}
-        <div className="bg-gradient-to-br from-zinc-900 to-zinc-950/80 rounded-2xl p-6 border border-zinc-800/80 flex flex-col justify-between relative overflow-hidden" id="challenge-card">
+        <div className="bg-gradient-to-br from-zinc-900 to-zinc-950/80 rounded-2xl p-6 border border-zinc-700 flex flex-col justify-between relative overflow-hidden" id="challenge-card">
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
           
           <div>
@@ -215,7 +215,7 @@ export default function YouthSavingHub({
                 </span>
               </div>
               
-              <div className="w-full bg-zinc-950 h-3 rounded-full overflow-hidden border border-zinc-800 relative">
+              <div className="w-full bg-zinc-950 h-3 rounded-full overflow-hidden border border-zinc-700 relative">
                 <div 
                   className={`h-full rounded-full transition-all duration-1000 ${
                     progressPercent >= 100 
@@ -242,19 +242,19 @@ export default function YouthSavingHub({
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-zinc-900 flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
+          <div className="mt-6 pt-4 border-t border-zinc-800 flex flex-wrap items-center justify-between gap-3 text-xs text-zinc-400">
             <div className="flex items-center gap-1.5">
               <CheckCircle2 size={13} className="text-emerald-400" />
               <span>Défi repas fait-maison</span>
             </div>
-            <span className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] px-2.5 py-1 rounded-lg font-semibold uppercase tracking-wider">
+            <span className="bg-zinc-900 border border-zinc-700 text-zinc-300 text-[10px] px-2.5 py-1 rounded-lg font-semibold uppercase tracking-wider">
               Objectif Mensuel
             </span>
           </div>
         </div>
 
         {/* 2. Micro-Spend Multiplier Simulator */}
-        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 flex flex-col justify-between" id="micro-spend-card">
+        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-700 flex flex-col justify-between" id="micro-spend-card">
           <div>
             <div className="flex items-center gap-2 mb-4">
               <span className="p-2 bg-purple-500/10 text-purple-400 rounded-xl border border-purple-500/20">
@@ -275,7 +275,7 @@ export default function YouthSavingHub({
                   <span className="flex items-center gap-1">
                     <Coffee size={13} className="text-zinc-500" /> Cafés / Encas extérieurs
                   </span>
-                  <span className="text-white bg-zinc-950 px-2 py-0.5 rounded font-mono text-[10px] border border-zinc-800">
+                  <span className="text-white bg-zinc-950 px-2 py-0.5 rounded font-mono text-[10px] border border-zinc-700">
                     {coffeeCount} / sem
                   </span>
                 </div>
@@ -296,7 +296,7 @@ export default function YouthSavingHub({
                   <span className="flex items-center gap-1">
                     <Smartphone size={13} className="text-zinc-500" /> Autres services simulés
                   </span>
-                  <span className="text-white bg-zinc-950 px-2 py-0.5 rounded font-mono text-[10px] border border-zinc-800">
+                  <span className="text-white bg-zinc-950 px-2 py-0.5 rounded font-mono text-[10px] border border-zinc-700">
                     {subsCount} services
                   </span>
                 </div>

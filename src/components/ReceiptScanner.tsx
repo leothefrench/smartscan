@@ -409,7 +409,7 @@ export default function ReceiptScanner({
 
   return (
     <div
-      className="bg-zinc-900 rounded-2xl border border-zinc-800 p-6 mb-8 relative overflow-hidden"
+      className="bg-zinc-900 rounded-2xl border border-zinc-700 p-6 mb-8 relative overflow-hidden"
       id="scanner-card-wrapper"
     >
       {/* Background glow effects for premium look */}
@@ -438,7 +438,7 @@ export default function ReceiptScanner({
         </div>
 
         {/* Tab Layout selectors */}
-        <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-800 shrink-0 self-start sm:self-center">
+        <div className="flex bg-zinc-950 p-1 rounded-xl border border-zinc-700 shrink-0 self-start sm:self-center">
           <button
             type="button"
             onClick={() => {
@@ -447,7 +447,7 @@ export default function ReceiptScanner({
             }}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'scan'
-                ? 'bg-zinc-900 text-emerald-400 border border-zinc-800 shadow'
+                ? 'bg-zinc-900 text-emerald-400 border border-zinc-700 shadow'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -462,7 +462,7 @@ export default function ReceiptScanner({
             }}
             className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'manual'
-                ? 'bg-zinc-900 text-emerald-400 border border-zinc-800 shadow'
+                ? 'bg-zinc-900 text-emerald-400 border border-zinc-700 shadow'
                 : 'text-zinc-400 hover:text-zinc-200'
             }`}
           >
@@ -535,7 +535,7 @@ export default function ReceiptScanner({
               className={`border-2 border-dashed rounded-2xl py-12 px-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all duration-300 min-h-[225px] group ${
                 isDragging
                   ? 'border-emerald-400 bg-emerald-950/25 scale-[1.01]'
-                  : 'border-zinc-500 bg-zinc-950/90 hover:border-emerald-400 hover:bg-emerald-950/10'
+                  : 'border-zinc-400 bg-zinc-950/90 hover:border-emerald-400 hover:bg-emerald-950/10'
               }`}
               id="scanner-dropzone"
             >
@@ -547,7 +547,7 @@ export default function ReceiptScanner({
                 accept="image/*,application/pdf"
               />
 
-              <div className="p-4 bg-zinc-900 rounded-2xl shadow-sm border border-zinc-800 text-zinc-300 group-hover:scale-105 group-hover:text-emerald-400 group-hover:border-emerald-500/40 transition-all duration-300 mb-4">
+              <div className="p-4 bg-zinc-900 rounded-2xl shadow-sm border border-zinc-700 text-zinc-300 group-hover:scale-105 group-hover:text-emerald-400 group-hover:border-emerald-500/40 transition-all duration-300 mb-4">
                 <Upload
                   size={26}
                   className="text-emerald-400 group-hover:animate-bounce"
@@ -573,7 +573,7 @@ export default function ReceiptScanner({
         /* Manual Quick Form */
         <form
           onSubmit={handleManualSubmit}
-          className="bg-zinc-950/80 rounded-2xl p-5 border border-zinc-800/80 space-y-4 font-sans"
+          className="bg-zinc-950/80 rounded-2xl p-5 border border-zinc-700 space-y-4 font-sans"
           id="manual-expense-form"
         >
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -590,7 +590,7 @@ export default function ReceiptScanner({
                   placeholder="ex: Café crème & Croissant, Sandwich midi..."
                   value={itemName}
                   onChange={(e) => setItemName(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all placeholder:text-zinc-600 focus:outline-none"
+                  className="w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-650 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all placeholder:text-zinc-600 focus:outline-none"
                 />
               </div>
             </div>
@@ -605,7 +605,7 @@ export default function ReceiptScanner({
                 placeholder="ex: Café de Flore, Boulangerie, Comptoir..."
                 value={merchantName}
                 onChange={(e) => setMerchantName(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all placeholder:text-zinc-600 focus:outline-none"
+                className="w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-650 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all placeholder:text-zinc-600 focus:outline-none"
               />
             </div>
 
@@ -624,7 +624,7 @@ export default function ReceiptScanner({
                   placeholder="ex: 3.50"
                   value={itemAmount}
                   onChange={(e) => setItemAmount(e.target.value)}
-                  className="w-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all font-mono placeholder:text-zinc-600 focus:outline-none"
+                  className="w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-650 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all font-mono placeholder:text-zinc-600 focus:outline-none"
                 />
               </div>
             </div>
@@ -632,14 +632,14 @@ export default function ReceiptScanner({
             {/* Date */}
             <div className="space-y-1.5">
               <label className="text-xs text-zinc-300 font-semibold flex items-center gap-1">
-                <Calendar size={13} className="text-zinc-500" /> Date d'achat
+                <Calendar size={13} className="text-zinc-505" /> Date d'achat
               </label>
               <input
                 type="date"
                 required
                 value={itemDate}
                 onChange={(e) => setItemDate(e.target.value)}
-                className="w-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all font-mono focus:outline-none"
+                className="w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-650 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all font-mono focus:outline-none"
               />
             </div>
 
@@ -654,7 +654,7 @@ export default function ReceiptScanner({
                 onChange={(e) =>
                   setItemCategory(e.target.value as ReceiptCategory)
                 }
-                className="w-full bg-zinc-900 border border-zinc-800 hover:border-zinc-700 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all focus:outline-none"
+                className="w-full bg-zinc-900 border border-zinc-700 hover:border-zinc-650 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 text-xs rounded-xl px-3.5 py-2.5 text-white transition-all focus:outline-none"
               >
                 {categories.map((cat) => (
                   <option key={cat} value={cat}>

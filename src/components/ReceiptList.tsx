@@ -205,7 +205,7 @@ export default function ReceiptList({
                 setSearchQuery(e.target.value);
                 setShowAll(false);
               }}
-              className="w-full h-9 pl-9 pr-4 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 focus:border-zinc-650 focus:bg-zinc-950 text-xs font-semibold text-white placeholder-zinc-500 outline-none rounded-xl transition-all"
+              className="w-full h-9 pl-9 pr-4 bg-zinc-950 border border-zinc-700 hover:border-zinc-600 focus:border-zinc-500 focus:bg-zinc-950 text-xs font-semibold text-white placeholder-zinc-500 outline-none rounded-xl transition-all"
             />
           </div>
 
@@ -217,7 +217,7 @@ export default function ReceiptList({
                 setSelectedCategoryFilter(e.target.value);
                 setShowAll(false);
               }}
-              className="w-full h-9 sm:w-[155px] pl-3 pr-8 bg-zinc-950 border border-zinc-800 text-ellipsis hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
+              className="w-full h-9 sm:w-[155px] pl-3 pr-8 bg-zinc-950 border border-zinc-700 text-ellipsis hover:border-zinc-600 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
             >
               <option value="Toutes">Toutes les catégories</option>
               {Object.keys(CATEGORY_COLORS).map((cat) => (
@@ -237,7 +237,7 @@ export default function ReceiptList({
                 setSelectedYearFilter(e.target.value);
                 setShowAll(false);
               }}
-              className="w-full h-9 sm:w-[115px] pl-3 pr-8 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
+              className="w-full h-9 sm:w-[115px] pl-3 pr-8 bg-zinc-950 border border-zinc-700 hover:border-zinc-600 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
             >
               <option value="Toutes">Toutes les années</option>
               {yearsPresent.map((yr) => (
@@ -254,7 +254,7 @@ export default function ReceiptList({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full h-9 sm:w-[150px] pl-3 pr-8 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
+              className="w-full h-9 sm:w-[150px] pl-3 pr-8 bg-zinc-950 border border-zinc-700 hover:border-zinc-600 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
             >
               <option value="date-desc">Plus récents d'abord</option>
               <option value="date-asc">Plus anciens d'abord</option>
@@ -271,7 +271,7 @@ export default function ReceiptList({
             disabled={receipts.length === 0}
             className={`flex items-center gap-1.5 w-full sm:w-auto h-9 justify-center px-4 text-xs font-bold rounded-xl transition-all border cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed ${
               isPremium
-                ? 'bg-zinc-950 border-zinc-800 hover:border-emerald-500/30 text-emerald-400'
+                ? 'bg-zinc-950 border-zinc-700 hover:border-emerald-500/40 text-emerald-400'
                 : 'bg-amber-950/20 border-amber-900/40 hover:border-amber-400 text-amber-400'
             }`}
             title={
@@ -306,7 +306,7 @@ export default function ReceiptList({
       {/* Main Listing View */}
       {displayedReceipts.length === 0 ? (
         <div
-          className="text-center py-12 border border-dashed border-zinc-800 rounded-2xl bg-zinc-950/30"
+          className="text-center py-12 border border-dashed border-zinc-700 rounded-2xl bg-zinc-950/30"
           id="empty-state"
         >
           <FileText size={32} className="mx-auto text-zinc-650 mb-3" />
@@ -343,7 +343,7 @@ export default function ReceiptList({
                 <div
                   key={receipt.id}
                   onClick={() => onSelectReceipt(receipt)}
-                  className="group relative bg-zinc-950 border border-zinc-805/80 hover:border-emerald-500/30 hover:shadow-lg rounded-2xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between"
+                  className="group relative bg-zinc-950 border border-zinc-700 hover:border-emerald-500/40 hover:shadow-lg rounded-2xl p-4 cursor-pointer transition-all duration-300 flex flex-col justify-between"
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
