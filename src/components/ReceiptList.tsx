@@ -162,24 +162,28 @@ export default function ReceiptList({
           <h2 className="text-lg font-bold text-white tracking-tight">
             Historique des Tickets Numérisés
           </h2>
-          <div className="flex flex-wrap items-center gap-2 mt-0.5">
-            <span className="text-xs text-zinc-400 flex items-center gap-1">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-0.5">
+            <span className="text-xs text-zinc-400">
               Trouvés :{' '}
-              <span className="font-semibold text-emerald-400 font-mono">
+              <span className="font-bold text-emerald-400 font-mono text-sm leading-none inline-block align-baseline">
                 {filteredReceipts.length}
               </span>{' '}
-              sur {receipts.length} tickets
-              {filteredReceipts.length > 6 && !showAll && (
-                <span className="text-[10px] text-zinc-500 bg-zinc-950/50 px-2 py-0.5 rounded-md border border-zinc-800/40 ml-1">
-                  (affichage de 6 éléments par défaut)
-                </span>
-              )}
+              sur{' '}
+              <span className="text-zinc-200 font-semibold">
+                {receipts.length}
+              </span>{' '}
+              tickets
             </span>
+            {filteredReceipts.length > 6 && !showAll && (
+              <span className="text-[10px] text-zinc-500 bg-zinc-950/50 px-2 py-0.5 rounded-md border border-zinc-800/40 font-medium">
+                (affichage de 6 éléments par défaut)
+              </span>
+            )}
             {hasDemoData && onClearDemo && (
               <button
                 type="button"
                 onClick={onClearDemo}
-                className="text-[10px] font-bold text-amber-400 bg-amber-950/20 hover:bg-amber-950/40 border border-amber-900/60 hover:border-amber-400/50 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
+                className="text-[10px] font-bold text-amber-405 bg-amber-950/20 hover:bg-amber-950/40 border border-amber-900/60 hover:border-amber-400/50 px-2 py-0.5 rounded-md transition-colors cursor-pointer"
                 title="Supprimer les tickets d'exemple et d'entraînement pour ne garder que vos tickets réels"
               >
                 Remettre à zéro les exemples 🧹
@@ -192,7 +196,7 @@ export default function ReceiptList({
         <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto">
           {/* Search Box */}
           <div className="relative w-full sm:flex-1 md:w-44 xl:w-40">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500" />
             <input
               type="text"
               placeholder="Rechercher..."
@@ -201,7 +205,7 @@ export default function ReceiptList({
                 setSearchQuery(e.target.value);
                 setShowAll(false);
               }}
-              className="w-full pl-9 pr-4 py-2 bg-zinc-950 border border-zinc-805/80 hover:border-zinc-700 focus:bg-zinc-950 text-xs font-semibold text-white placeholder-zinc-500 outline-none rounded-xl transition-all"
+              className="w-full h-9 pl-9 pr-4 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 focus:border-zinc-650 focus:bg-zinc-950 text-xs font-semibold text-white placeholder-zinc-500 outline-none rounded-xl transition-all"
             />
           </div>
 
@@ -213,7 +217,7 @@ export default function ReceiptList({
                 setSelectedCategoryFilter(e.target.value);
                 setShowAll(false);
               }}
-              className="w-full sm:w-37.5 pl-3 pr-8 py-2 bg-zinc-950 border border-zinc-805/80 text-ellipsis hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
+              className="w-full h-9 sm:w-[155px] pl-3 pr-8 bg-zinc-950 border border-zinc-800 text-ellipsis hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
             >
               <option value="Toutes">Toutes les catégories</option>
               {Object.keys(CATEGORY_COLORS).map((cat) => (
@@ -222,7 +226,7 @@ export default function ReceiptList({
                 </option>
               ))}
             </select>
-            <Filter className="absolute right-3 top-2.5 h-3 w-3 text-zinc-500 pointer-events-none" />
+            <Filter className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-500 pointer-events-none" />
           </div>
 
           {/* Year Filter Dropdown */}
@@ -233,7 +237,7 @@ export default function ReceiptList({
                 setSelectedYearFilter(e.target.value);
                 setShowAll(false);
               }}
-              className="w-full sm:w-27.5 pl-3 pr-8 py-2 bg-zinc-950 border border-zinc-805/80 hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
+              className="w-full h-9 sm:w-[115px] pl-3 pr-8 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
             >
               <option value="Toutes">Toutes les années</option>
               {yearsPresent.map((yr) => (
@@ -242,7 +246,7 @@ export default function ReceiptList({
                 </option>
               ))}
             </select>
-            <Calendar className="absolute right-3 top-2.5 h-3 w-3 text-zinc-500 pointer-events-none" />
+            <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-500 pointer-events-none" />
           </div>
 
           {/* Sorting Dropdown */}
@@ -250,14 +254,14 @@ export default function ReceiptList({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className="w-full sm:w-36.25 pl-3 pr-8 py-2 bg-zinc-950 border border-zinc-850 hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
+              className="w-full h-9 sm:w-[150px] pl-3 pr-8 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-xs font-semibold text-zinc-300 rounded-xl outline-none appearance-none cursor-pointer"
             >
               <option value="date-desc">Plus récents d'abord</option>
               <option value="date-asc">Plus anciens d'abord</option>
               <option value="amount-desc">Montants max d'abord</option>
               <option value="amount-asc">Montants min d'abord</option>
             </select>
-            <ArrowUpDown className="absolute right-3 top-2.5 h-3 w-3 text-zinc-500 pointer-events-none" />
+            <ArrowUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-500 pointer-events-none" />
           </div>
 
           {/* Export CSV button */}
@@ -265,7 +269,7 @@ export default function ReceiptList({
             type="button"
             onClick={handleExportCSV}
             disabled={receipts.length === 0}
-            className={`flex items-center gap-1.5 w-full sm:w-auto justify-center px-4 py-2 text-xs font-bold rounded-xl transition-all border cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed ${
+            className={`flex items-center gap-1.5 w-full sm:w-auto h-9 justify-center px-4 text-xs font-bold rounded-xl transition-all border cursor-pointer select-none disabled:opacity-50 disabled:cursor-not-allowed ${
               isPremium
                 ? 'bg-zinc-950 border-zinc-800 hover:border-emerald-500/30 text-emerald-400'
                 : 'bg-amber-950/20 border-amber-900/40 hover:border-amber-400 text-amber-400'
