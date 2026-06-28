@@ -29,7 +29,7 @@ interface ReceiptScannerProps {
 const SCAN_LOADER_STEPS = [
   "Téléchargement de l'image de votre ticket...",
   'Lancement de la vision cognitive intelligente...',
-  'Numérisation OCR haute fidélité du texte...',
+  'Lecture automatique et précise du texte...',
   "Extraction sémantique des articles d'achat...",
   'Classification intelligente par thématiques...',
   'Validation finale des totaux et de la monnaie...',

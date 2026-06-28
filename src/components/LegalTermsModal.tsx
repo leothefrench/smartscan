@@ -46,9 +46,9 @@ export default function LegalTermsModal({
             <p className="leading-relaxed text-zinc-400">
               SmartScan propose un accès d'évaluation de{' '}
               <strong>7 jours entièrement gratuit</strong> à l'offre Premium
-              PRO. Vous pouvez utiliser toutes les fonctionnalités d'analyse
-              d'image OCR, de synchronisation Cloud et d'exports de manière
-              illimitée pendant cette période.
+              PRO. Vous pouvez utiliser toutes les fonctionnalités de lecture
+              automatique de tickets, de synchronisation Cloud et d'exports de
+              manière illimitée pendant cette période.
             </p>
             <p className="leading-relaxed text-zinc-400">
               À l'issue de cet essai de 7 jours, l'abonnement mensuel de{' '}
@@ -77,7 +77,8 @@ export default function LegalTermsModal({
                 🔴 Dérogations & Renonciation d'exécution immédiate :
               </span>
               En demandant l'accès immédiat à l'abonnement Premium PRO dès la
-              souscription (traitement OCR instantané, exports illimités),{' '}
+              souscription (lecture et analyse automatique de tickets, exports
+              illimités),{' '}
               <strong className="text-white underline decoration-amber-500/50 decoration-2 underline-offset-2">
                 l'utilisateur consent expressément à ce que le service débute
                 immédiatement et renonce de fait à son droit de rétractation

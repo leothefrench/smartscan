@@ -207,7 +207,7 @@ export default function AuthScreen({ onLoginSuccess }: AuthScreenProps) {
           </div>
           <h1 className="text-2xl font-black text-white tracking-tight">SmartReceipt</h1>
           <p className="text-xs text-slate-400 max-w-xs mx-auto">
-            Accédez à votre espace de suivi budgétaire en toute sécurité. Simple, ultra-rapide et gratuit.
+            Accédez à votre espace de suivi budgétaire en toute sécurité. Simple, ultra-rapide, avec formule premium.
           </p>
         </div>
 
