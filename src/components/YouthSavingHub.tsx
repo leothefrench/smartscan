@@ -61,9 +61,7 @@ export default function YouthSavingHub({
   // Track popularity configurations
   const subscriptionConfig = [
     { name: "Netflix", keywords: ["netflix"], price: 13.49, icon: Tv },
-    { name: "Amazon Prime", keywords: ["prime", "amazon prime", "amazonprime"], price: 6.99, icon: ShoppingBag },
     { name: "Canal+", keywords: ["canal", "canal+", "canal plus", "mycanal"], price: 22.99, icon: Tv },
-    { name: "Spotify", keywords: ["spotify"], price: 10.99, icon: Music },
   ];
 
   // Dynamic matching from scanned or added receipts (popular templates)
@@ -262,7 +260,7 @@ export default function YouthSavingHub({
               </span>
               <div>
                 <h3 className="text-sm font-bold text-white tracking-tight leading-none font-sans">
-                  Simulateur de Petits Frais
+                  Simulateur de Charges & Abonnements
                 </h3>
                 <span className="text-[10px] text-zinc-400">Mesurez l'impact des dépenses récurrentes</span>
               </div>
@@ -282,7 +280,7 @@ export default function YouthSavingHub({
                 <input 
                   type="range"
                   min="0"
-                  max="10"
+                  max="28"
                   step="1"
                   value={coffeeCount}
                   onChange={(e) => setCoffeeCount(Number(e.target.value))}
