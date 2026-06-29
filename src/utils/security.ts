@@ -3,8 +3,8 @@
  */
 
 export function sanitizeInput(input: string): string {
-  if (!input) return '';
-
+  if (!input) return "";
+  
   // 1. Defend against common SQL Injection payloads
   let sanitized = input;
   const sqlKeywords = [
@@ -27,23 +27,44 @@ export function sanitizeInput(input: string): string {
   ];
 
   sqlKeywords.forEach((regex) => {
-    sanitized = sanitized.replace(regex, '');
+    sanitized = sanitized.replace(regex, "");
   });
 
   // 2. Defend against Cross-Site Scripting (XSS)
   sanitized = sanitized
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-    .replace(/javascript:/gi, '')
-    .replace(/onload=/gi, '')
-    .replace(/onerror=/gi, '')
-    .replace(/onclick=/gi, '');
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+    .replace(/javascript:/gi, "")
+    .replace(/onload=/gi, "")
+    .replace(/onerror=/gi, "")
+    .replace(/onclick=/gi, "");
 
   // Defend against HTML tags and script injection by stripping < and >.
   // We do NOT escape safe characters like ', ", /, & because React natively handles
   // safe rendering / auto-escaping when rendering text, and manual escaping causes double-escaping bugs in the UI.
-  sanitized = sanitized.replace(/</g, '').replace(/>/g, '');
+  sanitized = sanitized
+    .replace(/</g, "")
+    .replace(/>/g, "");
 
   return sanitized.trim();
+}
+
+/**
+ * Normalise le nom du commerçant / établissement en "Title Case" de façon cohérente,
+ * gérant correctement les apostrophes, tirets et espaces.
+ * Exemple: "l'outsider" -> "L'Outsider", "oUtSider" -> "Outsider"
+ */
+export function formatMerchantName(name: string): string {
+  if (!name) return "";
+  
+  // Nettoie les espaces multiples
+  let cleaned = name.trim().replace(/\s+/g, " ");
+  
+  // Met en majuscule le premier caractère de chaque mot (après un espace, un tiret ou une apostrophe)
+  return cleaned
+    .toLowerCase()
+    .replace(/(^|[\s'\-])([a-zà-öø-ÿ])/g, (match, separator, letter) => {
+      return separator + letter.toUpperCase();
+    });
 }
 
 /**
