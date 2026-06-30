@@ -1,8 +1,17 @@
-import React, { useState } from "react";
-import { Receipt, ReceiptItem, ReceiptCategory } from "../types";
-import { CATEGORY_COLORS } from "../data/demoReceipts";
-import { X, Trash2, Calendar, Store, CreditCard, Sparkles, Plus, Check } from "lucide-react";
-import { sanitizeInput } from "../utils/security";
+import React, { useState } from 'react';
+import { Receipt, ReceiptItem, ReceiptCategory } from '../types';
+import { CATEGORY_COLORS } from '../data/demoReceipts';
+import {
+  X,
+  Trash2,
+  Calendar,
+  Store,
+  CreditCard,
+  Sparkles,
+  Plus,
+  Check,
+} from 'lucide-react';
+import { sanitizeInput } from '../utils/security';
 
 interface ReceiptDetailsModalProps {
   receipt: Receipt;
@@ -15,11 +24,13 @@ export default function ReceiptDetailsModal({
   receipt,
   onClose,
   onDelete,
-  onUpdate
+  onUpdate,
 }: ReceiptDetailsModalProps) {
   const [editableMerchant, setEditableMerchant] = useState(receipt.merchant);
   const [editableDate, setEditableDate] = useState(receipt.date);
-  const [editableTaxAmount, setEditableTaxAmount] = useState<number>(receipt.taxAmount || 0);
+  const [editableTaxAmount, setEditableTaxAmount] = useState<number>(
+    receipt.taxAmount || 0,
+  );
   const [items, setItems] = useState<ReceiptItem[]>(receipt.items);
   const [isSaved, setIsSaved] = useState(false);
 
@@ -49,7 +60,10 @@ export default function ReceiptDetailsModal({
   const isWeightItem = (name: string, qty: number) => {
     const hasDecimal = qty % 1 !== 0;
     const isLessThanOne = qty > 0 && qty < 1;
-    const hasWeightWords = /\b(kg|g|gr|grammes|kilo|kilos|boucherie|viande|steak|filet|charcuterie|traiteur|poids|poisson)\b/i.test(name);
+    const hasWeightWords =
+      /\b(kg|g|gr|grammes|kilo|kilos|boucherie|viande|steak|filet|charcuterie|traiteur|poids|poisson)\b/i.test(
+        name,
+      );
     return hasDecimal || isLessThanOne || hasWeightWords;
   };
 
@@ -80,10 +94,10 @@ export default function ReceiptDetailsModal({
   const handleAddItem = () => {
     const newItem: ReceiptItem = {
       id: `item-manual-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-      name: "",
+      name: '',
       quantity: 1,
       price: 0,
-      category: "Alimentation"
+      category: 'Alimentation',
     };
     setItems([...items, newItem]);
   };
@@ -98,12 +112,13 @@ export default function ReceiptDetailsModal({
   const handleSave = () => {
     // Recompute total based on item pricing
     const newTotal = items.reduce((sum, item) => sum + item.price, 0);
-    
+
     // Defensive sanitization of all edits
-    const sanitizedMerchant = sanitizeInput(editableMerchant) || "Magasin Modifié";
+    const sanitizedMerchant =
+      sanitizeInput(editableMerchant) || 'Magasin Modifié';
     const sanitizedItems = items.map((item) => ({
       ...item,
-      name: sanitizeInput(item.name) || "Article"
+      name: sanitizeInput(item.name) || 'Article',
     }));
 
     const updatedReceipt: Receipt = {
@@ -112,7 +127,7 @@ export default function ReceiptDetailsModal({
       date: editableDate,
       items: sanitizedItems,
       taxAmount: Number(Number(editableTaxAmount).toFixed(2)),
-      totalAmount: Number(newTotal.toFixed(2))
+      totalAmount: Number(newTotal.toFixed(2)),
     };
     onUpdate(updatedReceipt);
     setIsSaved(true);
@@ -124,12 +139,12 @@ export default function ReceiptDetailsModal({
   };
 
   return (
-    <div 
+    <div
       className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
       style={{ margin: 0 }}
       id="receipt-modal-backdrop"
     >
-      <div 
+      <div
         className="bg-zinc-900 rounded-3xl shadow-2xl border-2 border-zinc-700 w-full max-w-2xl md:max-w-4xl max-h-[92vh] sm:max-h-[90vh] overflow-hidden flex flex-col animate-slideUp text-white shadow-[0_0_40px_rgba(0,0,0,0.6)]"
         id="receipt-modal-container"
       >
@@ -140,10 +155,12 @@ export default function ReceiptDetailsModal({
               Analyse IA Complétée
             </span>
             {receipt.imageUrl && (
-              <span className="text-[10px] sm:text-xs text-zinc-400 font-medium font-mono truncate max-w-[180px] sm:max-w-none">Image conservée localement</span>
+              <span className="text-[10px] sm:text-xs text-zinc-400 font-medium font-mono truncate max-w-[180px] sm:max-w-none">
+                Image conservée localement
+              </span>
             )}
           </div>
-          <button 
+          <button
             type="button"
             onClick={onClose}
             className="p-1.5 hover:bg-zinc-800 rounded-full text-zinc-400 hover:text-white transition-colors cursor-pointer shrink-0"
@@ -157,11 +174,13 @@ export default function ReceiptDetailsModal({
           {/* Quick Info Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-1 bg-zinc-950 p-4 rounded-2xl border border-zinc-700">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Nom du Commerçant</label>
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                Nom du Commerçant
+              </label>
               <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-xl mt-1">
                 <Store size={15} className="text-emerald-400" />
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={editableMerchant}
                   onChange={(e) => setEditableMerchant(e.target.value)}
                   className="w-full text-sm font-semibold bg-transparent border-none focus:outline-none p-0 text-white"
@@ -170,11 +189,13 @@ export default function ReceiptDetailsModal({
             </div>
 
             <div className="space-y-1 bg-zinc-950 p-4 rounded-2xl border border-zinc-700">
-              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">Date de l'Achat</label>
+              <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                Date de l'Achat
+              </label>
               <div className="flex items-center gap-2 px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-xl mt-1">
                 <Calendar size={15} className="text-emerald-400" />
-                <input 
-                  type="date" 
+                <input
+                  type="date"
                   value={editableDate}
                   onChange={(e) => setEditableDate(e.target.value)}
                   className="w-full text-sm font-semibold bg-transparent border-none focus:outline-none p-0 text-white [color-scheme:dark]"
@@ -191,7 +212,9 @@ export default function ReceiptDetailsModal({
                   <Sparkles size={16} />
                 </div>
                 <div>
-                  <span className="text-xs font-bold text-emerald-300 block mb-0.5">Note de l'Assistant Gemini IA</span>
+                  <span className="text-xs font-bold text-emerald-300 block mb-0.5">
+                    Note de l'Assistant Gemini IA
+                  </span>
                   <p className="text-xs text-zinc-205 leading-relaxed italic font-medium">
                     "{receipt.rawResponse}"
                   </p>
@@ -203,36 +226,49 @@ export default function ReceiptDetailsModal({
           {/* Physical Receipt Simulation */}
           <div className="border-2 border-zinc-700 rounded-2xl bg-zinc-955/90 p-5 space-y-4 shadow-xl">
             <div className="text-center pb-4 border-b border-dashed border-zinc-700">
-              <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider">Simulateur de ticket de caisse</div>
-              <h3 className="text-lg font-black text-white uppercase tracking-tight mt-1">{editableMerchant}</h3>
-              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">DATE: {editableDate} — DEV: {receipt.currency}</p>
+              <div className="text-xs font-mono text-zinc-500 uppercase tracking-wider">
+                Simulateur de ticket de caisse
+              </div>
+              <h3 className="text-lg font-black text-white uppercase tracking-tight mt-1">
+                {editableMerchant}
+              </h3>
+              <p className="text-[10px] text-zinc-500 font-mono mt-0.5">
+                DATE: {editableDate} — DEV: {receipt.currency}
+              </p>
             </div>
 
             {/* List of items */}
             <div className="space-y-3 font-mono">
               {items.length === 0 ? (
-                <p className="text-xs text-zinc-500 italic text-center py-4">Aucun article dans ce ticket</p>
+                <p className="text-xs text-zinc-500 italic text-center py-4">
+                  Aucun article dans ce ticket
+                </p>
               ) : (
                 items.map((item) => {
                   return (
-                    <div 
-                      key={item.id} 
-                      className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b border-zinc-900 text-xs text-zinc-300 group"
+                    <div
+                      key={item.id}
+                      className="flex flex-col md:flex-row md:items-start justify-between gap-3 pb-3 border-b border-zinc-900 text-xs text-zinc-300 group"
                     >
                       {/* Name of item editable */}
                       <div className="flex-1 min-w-0">
                         <input
                           type="text"
                           value={item.name}
-                          onChange={(e) => handleItemNameChange(item.id, e.target.value)}
+                          onChange={(e) =>
+                            handleItemNameChange(item.id, e.target.value)
+                          }
                           className="w-full bg-zinc-900/60 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-white font-sans font-medium focus:outline-none focus:border-zinc-550"
                           placeholder="Nom de l'article"
                         />
                         {/* Intelligent price-per-unit / price-per-kilo display */}
-                        <div className="mt-1 flex items-center gap-1 text-[9px] text-zinc-550 font-sans">
+                        <div className="mt-1.5 flex items-center gap-1 text-[9px] text-zinc-550 font-sans pl-1">
                           <span>Prix indicatif :</span>
                           <span className="text-amber-400 font-mono font-semibold">
-                            {(item.price / (item.quantity || 1)).toFixed(2)} € / {isWeightItem(item.name, item.quantity) ? "kg" : "u"}
+                            {(item.price / (item.quantity || 1)).toFixed(2)} € /{' '}
+                            {isWeightItem(item.name, item.quantity)
+                              ? 'kg'
+                              : 'u'}
                           </span>
                         </div>
                       </div>
@@ -240,37 +276,58 @@ export default function ReceiptDetailsModal({
                       {/* Quantity, price, category editable */}
                       <div className="flex items-center gap-2 shrink-0 flex-wrap">
                         {/* Quantity / Weight */}
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 border border-zinc-700 rounded-lg">
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 rounded">
                           <span className="text-[8px] text-zinc-500 uppercase font-bold">
-                            {isWeightItem(item.name, item.quantity) ? "Poids" : "Qté"}
+                            {isWeightItem(item.name, item.quantity)
+                              ? 'Poids'
+                              : 'Qté'}
                           </span>
                           <input
                             type="number"
                             step="any"
                             value={item.quantity}
-                            onChange={(e) => handleItemQtyChange(item.id, Number(e.target.value))}
+                            onChange={(e) =>
+                              handleItemQtyChange(
+                                item.id,
+                                Number(e.target.value),
+                              )
+                            }
                             className="w-16 bg-transparent text-center text-xs text-white font-mono focus:outline-none font-bold"
                           />
                         </div>
 
                         {/* Price */}
-                        <div className="flex items-center gap-1 px-2 py-1 bg-zinc-900 border border-zinc-700 rounded">
-                          <span className="text-[8px] text-zinc-500 uppercase">Total</span>
+                        <div className="flex items-center gap-1 px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 rounded">
+                          <span className="text-[8px] text-zinc-500 uppercase">
+                            Total
+                          </span>
                           <input
                             type="number"
                             step="0.01"
                             value={item.price}
-                            onChange={(e) => handleItemPriceChange(item.id, Number(e.target.value))}
+                            onChange={(e) =>
+                              handleItemPriceChange(
+                                item.id,
+                                Number(e.target.value),
+                              )
+                            }
                             className="w-16 bg-transparent text-right text-xs text-white font-mono focus:outline-none"
                           />
-                          <span className="text-[9px] text-zinc-500">{receipt.currency}</span>
+                          <span className="text-[9px] text-zinc-500">
+                            {receipt.currency}
+                          </span>
                         </div>
 
                         {/* Interactive Categorization Controls */}
                         <select
                           value={item.category}
-                          onChange={(e) => handleCategoryChange(item.id, e.target.value as ReceiptCategory)}
-                          className="text-[10px] font-bold px-2.5 py-1.5 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 outline-none cursor-pointer hover:border-zinc-600"
+                          onChange={(e) =>
+                            handleCategoryChange(
+                              item.id,
+                              e.target.value as ReceiptCategory,
+                            )
+                          }
+                          className="text-[10px] font-bold px-2.5 py-1.5 rounded border border-zinc-700 bg-zinc-900 text-zinc-200 outline-none cursor-pointer hover:border-zinc-600 h-[32px] flex items-center"
                         >
                           {Object.keys(CATEGORY_COLORS).map((catName) => (
                             <option key={catName} value={catName}>
@@ -282,7 +339,7 @@ export default function ReceiptDetailsModal({
                         <button
                           type="button"
                           onClick={() => handleDeleteItem(item.id)}
-                          className="p-1 px-2 hover:bg-red-950/40 text-zinc-500 hover:text-red-400 rounded transition-colors cursor-pointer"
+                          className="h-[32px] flex items-center justify-center hover:bg-red-950/40 text-zinc-500 hover:text-red-400 rounded transition-colors cursor-pointer px-2.5 border border-zinc-800 bg-zinc-900"
                           title="Supprimer la ligne"
                         >
                           <Trash2 size={13} />
@@ -309,15 +366,18 @@ export default function ReceiptDetailsModal({
             {/* Receipt Summary Calculations */}
             <div className="pt-4 border-t border-dashed border-zinc-700">
               <div className="space-y-2 text-xs text-zinc-300 font-mono">
-                
                 {/* Editable TaxAmount input row */}
                 <div className="flex justify-between items-center py-1 bg-zinc-950 px-2 rounded-xl border border-zinc-800">
-                  <span className="text-zinc-400 text-[11px] font-sans font-semibold">TVA cumulée perçue ({receipt.currency}) :</span>
+                  <span className="text-zinc-400 text-[11px] font-sans font-semibold">
+                    TVA cumulée perçue ({receipt.currency}) :
+                  </span>
                   <input
                     type="number"
                     step="0.01"
                     value={editableTaxAmount}
-                    onChange={(e) => setEditableTaxAmount(Number(e.target.value))}
+                    onChange={(e) =>
+                      setEditableTaxAmount(Number(e.target.value))
+                    }
                     className="bg-zinc-900 border border-zinc-700 text-white font-mono text-center text-xs px-2 py-1 rounded-lg w-20 focus:outline-none focus:border-zinc-600"
                   />
                 </div>
@@ -325,15 +385,17 @@ export default function ReceiptDetailsModal({
                 <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-zinc-900">
                   <span>Montant Total :</span>
                   <span className="text-emerald-400 font-extrabold">
-                    {items.reduce((sum, item) => sum + item.price, 0).toLocaleString("fr-FR", {
-                      style: "currency",
-                      currency: receipt.currency
-                    })}
+                    {items
+                      .reduce((sum, item) => sum + item.price, 0)
+                      .toLocaleString('fr-FR', {
+                        style: 'currency',
+                        currency: receipt.currency,
+                      })}
                   </span>
                 </div>
               </div>
             </div>
-            
+
             <div className="flex justify-center text-[9px] text-zinc-655 font-mono text-center pt-2 select-none uppercase tracking-wide">
               **************** NUMÉRISATION SOUVERAINE ****************
             </div>
@@ -365,14 +427,15 @@ export default function ReceiptDetailsModal({
               type="button"
               onClick={handleSave}
               className={`flex items-center justify-center gap-1 px-4 py-3 text-black font-semibold text-xs rounded-xl shadow-sm transition-all duration-300 cursor-pointer ${
-                isSaved 
-                  ? "bg-emerald-500 hover:bg-emerald-600 scale-95" 
-                  : "bg-white hover:bg-zinc-100"
+                isSaved
+                  ? 'bg-emerald-500 hover:bg-emerald-600 scale-95'
+                  : 'bg-white hover:bg-zinc-100'
               }`}
             >
               {isSaved ? (
                 <>
-                  <Check size={14} className="animate-pulse" /> Modifié avec succès !
+                  <Check size={14} className="animate-pulse" /> Modifié avec
+                  succès !
                 </>
               ) : (
                 <>Enregistrer les modifications</>
