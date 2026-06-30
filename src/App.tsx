@@ -7,6 +7,7 @@ import ReceiptDetailsModal from './components/ReceiptDetailsModal';
 import AuthScreen from './components/AuthScreen';
 import PrivacyBanner from './components/PrivacyBanner';
 import YouthSavingHub from './components/YouthSavingHub';
+import PriceComparator from './components/PriceComparator';
 import StripeCheckoutModal from './components/StripeCheckoutModal';
 import LegalTermsModal from './components/LegalTermsModal';
 import {
@@ -579,6 +580,13 @@ export default function App() {
           onSubscribeClick={() => setIsCheckoutOpen(true)}
           onAddSubscriptionReceipt={handleAddSubscriptionReceipt}
           onDeleteReceipt={handleDeleteReceipt}
+        />
+
+        {/* Price Comparator */}
+        <PriceComparator
+          receipts={receipts}
+          isPremium={isPremium}
+          onSubscribeClick={() => setIsCheckoutOpen(true)}
         />
 
         {/* Scanner Uploader Module */}

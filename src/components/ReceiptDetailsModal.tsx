@@ -45,11 +45,20 @@ export default function ReceiptDetailsModal({
     setItems(updated);
   };
 
-  // Edit item quantity
+  // Helper to auto-detect weight items (grams, kilograms, etc.)
+  const isWeightItem = (name: string, qty: number) => {
+    const hasDecimal = qty % 1 !== 0;
+    const isLessThanOne = qty > 0 && qty < 1;
+    const hasWeightWords = /\b(kg|g|gr|grammes|kilo|kilos|boucherie|viande|steak|filet|charcuterie|traiteur|poids|poisson)\b/i.test(name);
+    return hasDecimal || isLessThanOne || hasWeightWords;
+  };
+
+  // Edit item quantity (or weight)
   const handleItemQtyChange = (itemId: string, newQty: number) => {
     const updated = items.map((item) => {
       if (item.id === itemId) {
-        return { ...item, quantity: Math.max(1, newQty) };
+        const qty = isNaN(newQty) ? 1 : Math.max(0.001, newQty);
+        return { ...item, quantity: qty };
       }
       return item;
     });
@@ -219,19 +228,28 @@ export default function ReceiptDetailsModal({
                           className="w-full bg-zinc-900/60 border border-zinc-700 rounded px-2.5 py-1.5 text-xs text-white font-sans font-medium focus:outline-none focus:border-zinc-550"
                           placeholder="Nom de l'article"
                         />
+                        {/* Intelligent price-per-unit / price-per-kilo display */}
+                        <div className="mt-1 flex items-center gap-1 text-[9px] text-zinc-550 font-sans">
+                          <span>Prix indicatif :</span>
+                          <span className="text-amber-400 font-mono font-semibold">
+                            {(item.price / (item.quantity || 1)).toFixed(2)} € / {isWeightItem(item.name, item.quantity) ? "kg" : "u"}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Quantity, price, category editable */}
                       <div className="flex items-center gap-2 shrink-0 flex-wrap">
-                        {/* Quantity */}
-                        <div className="flex items-center gap-1 px-2 py-1 bg-zinc-900 border border-zinc-700 rounded">
-                          <span className="text-[8px] text-zinc-500 uppercase">Qté</span>
+                        {/* Quantity / Weight */}
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 border border-zinc-700 rounded-lg">
+                          <span className="text-[8px] text-zinc-500 uppercase font-bold">
+                            {isWeightItem(item.name, item.quantity) ? "Poids" : "Qté"}
+                          </span>
                           <input
                             type="number"
-                            min="1"
+                            step="any"
                             value={item.quantity}
                             onChange={(e) => handleItemQtyChange(item.id, Number(e.target.value))}
-                            className="w-10 bg-transparent text-center text-xs text-white font-mono focus:outline-none"
+                            className="w-16 bg-transparent text-center text-xs text-white font-mono focus:outline-none font-bold"
                           />
                         </div>
 
