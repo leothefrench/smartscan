@@ -690,7 +690,7 @@ export default function PriceComparator({ receipts, isPremium, onSubscribeClick 
                       </div>
                       <div className="w-full bg-zinc-950 h-2 rounded-full overflow-hidden border border-zinc-850">
                         <div 
-                          className="h-full bg-gradient-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300"
+                          className="h-full bg-linear-to-r from-amber-500 to-amber-400 rounded-full transition-all duration-300"
                           style={{ width: `${progressPercent}%` }}
                         />
                       </div>
