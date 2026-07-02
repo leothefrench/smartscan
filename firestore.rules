@@ -13,6 +13,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null || true;
     }
 
+    // Allow reading and writing to the user profile document (e.g. for premium status)
+    match /users/{userId} {
+      allow read, write: if request.auth != null || true;
+    }
+
     // Dynamic OTP collection for zero-state serverless shared registry
     match /otps/{email} {
       allow read, write: if true;

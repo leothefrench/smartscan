@@ -579,12 +579,19 @@ Pour chaque article réellement répertorié sur l'image :
     console.error('!!! [SmartReceipt DEBUG] Erreur de scan de ticket:', error);
 
     let errorMessage =
-      error.message ||
+      error?.message ||
       "Une erreur est survenue lors de l'analyse du ticket par l'intelligence artificielle.";
 
-    // Check if it's an invalid API key error from Gemini
-    const errString =
-      typeof error === 'string' ? error : JSON.stringify(error) || '';
+    // Safe string representation of the error to avoid circular structure JSON.stringify crashes
+    let errString = '';
+    try {
+      errString =
+        typeof error === 'string'
+          ? error
+          : error?.stack || error?.message || String(error) || '';
+    } catch (_) {
+      errString = 'Erreur inconnue';
+    }
     if (
       errorMessage.includes('API key not valid') ||
       errorMessage.includes('API_KEY_INVALID') ||

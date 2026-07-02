@@ -10,6 +10,7 @@ import YouthSavingHub from "./components/YouthSavingHub";
 import PriceComparator from "./components/PriceComparator";
 import StripeCheckoutModal from "./components/StripeCheckoutModal";
 import LegalTermsModal from "./components/LegalTermsModal";
+import { onSnapshot, collection, doc } from "firebase/firestore";
 import { 
   IS_FIREBASE_REAL, 
   fetchUserReceipts, 
@@ -17,7 +18,8 @@ import {
   deleteUserReceiptFromCloud, 
   syncLocalReceiptsToCloud,
   saveUserPremiumStatus,
-  fetchUserPremiumStatus
+  fetchUserPremiumStatus,
+  db
 } from "./utils/firebase";
 import { formatMerchantName } from "./utils/security";
 import { Scan, Sparkles, ShieldCheck, LogOut, User, Smartphone, X, AlertTriangle, Eye, PlusCircle } from "lucide-react";
@@ -113,15 +115,6 @@ export default function App() {
       const userId = userSession.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
       const isLocalPremium = localStorage.getItem(`premium_${userId}`) === "true";
       setIsPremium(isLocalPremium);
-
-      if (IS_FIREBASE_REAL) {
-        fetchUserPremiumStatus(userId).then((status) => {
-          if (status || !isLocalPremium) {
-            setIsPremium(status);
-            localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
-          }
-        }).catch(err => console.warn("Erreur chargement premium initial :", err));
-      }
     }
 
     const stored = localStorage.getItem("scanner_receipts");
@@ -136,35 +129,63 @@ export default function App() {
     } else {
       setReceipts([]);
     }
-
-    // Interactive Firebase global sync on initial app startup
-    if (userSession && IS_FIREBASE_REAL) {
-      const userId = userSession.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
-      fetchUserReceipts(userId).then((cloudList) => {
-        if (cloudList && cloudList.length > 0) {
-          // Merge local and cloud receipts safely, prioritizing cloud definitions
-          const cloudIds = new Set(cloudList.map(r => r.id));
-          const merged = [...cloudList];
-          
-          initialReceipts.forEach((local) => {
-            if (!cloudIds.has(local.id)) {
-              merged.push(local);
-              // Back up local-only receipts to cloud in background
-              saveUserReceiptToCloud(userId, local).catch(e => console.warn("Erreur d'écriture en arrière-plan :", e));
-            }
-          });
-
-          setReceipts(merged);
-          localStorage.setItem("scanner_receipts", JSON.stringify(merged));
-        } else if (initialReceipts.length > 0) {
-          // If Firestore is empty but we have local receipts, sync ALL local receipts to Firestore
-          initialReceipts.forEach((local) => {
-            saveUserReceiptToCloud(userId, local).catch(e => console.warn("Erreur d'écriture en arrière-plan :", e));
-          });
-        }
-      }).catch((e) => console.warn("La récupération Cloud n'a pas pu être complétée (mode hors-ligne actif) :", e));
-    }
   }, []);
+
+  // Sync receipts and premium status dynamically across all open devices using real-time listeners
+  useEffect(() => {
+    if (!currentUserEmail || !IS_FIREBASE_REAL || !db) {
+      return;
+    }
+
+    const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
+
+    // 1. Subscribe to real-time premium status updates
+    const unsubPremium = onSnapshot(doc(db, "users", userId), (docSnap) => {
+      if (docSnap.exists()) {
+        const status = !!docSnap.data()?.isPremium;
+        setIsPremium(status);
+        localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
+      }
+    }, (err) => {
+      console.warn("Erreur d'écoute premium temps réel :", err);
+    });
+
+    // 2. Subscribe to real-time receipts updates with auto-merging of local-only receipts
+    let isFirstLoad = true;
+    const unsubReceipts = onSnapshot(collection(db, "users", userId, "receipts"), (qSnapshot) => {
+      const cloudList: Receipt[] = [];
+      qSnapshot.forEach((docSnap) => {
+        cloudList.push(docSnap.data() as Receipt);
+      });
+      cloudList.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+
+      if (isFirstLoad) {
+        isFirstLoad = false;
+        // Merge local receipts with cloud receipts on first load
+        const stored = localStorage.getItem("scanner_receipts");
+        const localList: Receipt[] = stored ? JSON.parse(stored) : [];
+        const cloudIds = new Set(cloudList.map(r => r.id));
+
+        localList.forEach((local) => {
+          if (!cloudIds.has(local.id)) {
+            saveUserReceiptToCloud(userId, local).catch((err) => 
+              console.warn("Erreur de sauvegarde locale vers cloud :", err)
+            );
+          }
+        });
+      }
+
+      setReceipts(cloudList);
+      localStorage.setItem("scanner_receipts", JSON.stringify(cloudList));
+    }, (err) => {
+      console.warn("Erreur d'écoute receipts temps réel :", err);
+    });
+
+    return () => {
+      unsubPremium();
+      unsubReceipts();
+    };
+  }, [currentUserEmail]);
 
   const handleLoginSuccess = async (email: string) => {
     setCurrentUserEmail(email);
@@ -174,25 +195,6 @@ export default function App() {
     const userId = email.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
     const isLocalPremium = localStorage.getItem(`premium_${userId}`) === "true";
     setIsPremium(isLocalPremium);
-
-    if (IS_FIREBASE_REAL) {
-      fetchUserPremiumStatus(userId).then((status) => {
-        if (status || !isLocalPremium) {
-          setIsPremium(status);
-          localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
-        }
-      }).catch(err => console.warn("Erreur chargement premium login :", err));
-
-      try {
-        const stored = localStorage.getItem("scanner_receipts");
-        const localList: Receipt[] = stored ? JSON.parse(stored) : [];
-        const syncedList = await syncLocalReceiptsToCloud(userId, localList);
-        setReceipts(syncedList);
-        localStorage.setItem("scanner_receipts", JSON.stringify(syncedList));
-      } catch (err) {
-        console.error("Échec de la synchronisation lors de la connexion :", err);
-      }
-    }
   };
 
   const handleLogout = () => {
