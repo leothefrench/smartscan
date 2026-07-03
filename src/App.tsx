@@ -41,6 +41,7 @@ export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [showQrCode, setShowQrCode] = useState<boolean>(false);
+  const [linkCopied, setLinkCopied] = useState<boolean>(false);
   const [duplicateReceiptData, setDuplicateReceiptData] = useState<{
     data: Receipt;
     originalImageName: string;
@@ -453,11 +454,11 @@ export default function App() {
           </div>
         </div>
 
-        <div className="flex items-center gap-1.5 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-3">
           {currentUserEmail && (
-            <div className="hidden lg:flex items-center gap-2 bg-zinc-900/80 px-3 py-1.5 rounded-xl border border-zinc-800">
-              <User size={13} className="text-zinc-400" />
-              <span className="text-xs font-mono text-zinc-300 font-semibold">
+            <div className="flex items-center gap-1 sm:gap-2 bg-zinc-900/85 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-zinc-800 shadow-md">
+              <User size={11} className="text-zinc-400 shrink-0" />
+              <span className="text-[9px] sm:text-xs font-mono text-zinc-300 font-semibold truncate max-w-[70px] sm:max-w-[150px]">
                 {currentUserEmail}
               </span>
             </div>
@@ -803,8 +804,35 @@ export default function App() {
               )}
             </div>
 
+            {currentUserEmail && (
+              <div className="space-y-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(getQrUrl());
+                    setLinkCopied(true);
+                    setTimeout(() => setLinkCopied(false), 2500);
+                  }}
+                  className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
+                >
+                  {linkCopied
+                    ? '✓ Lien copié !'
+                    : "Copier le lien d'accès direct"}
+                </button>
+                <p className="text-[9px] leading-tight text-amber-400 bg-amber-950/25 border border-amber-900/40 p-2 rounded-xl text-center">
+                  ⚠️ <strong>Important :</strong> Ouvrez impérativement le lien
+                  dans votre navigateur habituel (Safari, Chrome...) et non dans
+                  l'application appareil photo, pour partager correctement la
+                  connexion !
+                </p>
+              </div>
+            )}
+
             <button
-              onClick={() => setShowQrCode(false)}
+              onClick={() => {
+                setShowQrCode(false);
+                setLinkCopied(false);
+              }}
               className="w-full bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold py-2.5 rounded-xl transition-colors cursor-pointer"
             >
               Fermer
