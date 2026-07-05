@@ -136,9 +136,15 @@ export default function App() {
 
   // Sync receipts and premium status dynamically across all open devices using real-time listeners
   useEffect(() => {
-    if (!currentUserEmail || !IS_FIREBASE_REAL || !db) {
+    if (!IS_FIREBASE_REAL || !db) {
       setFirestoreConnected(false);
       setSyncError("Configuration Firebase manquante ou invalide.");
+      return;
+    }
+
+    if (!currentUserEmail) {
+      setFirestoreConnected(null);
+      setSyncError(null);
       return;
     }
 
@@ -565,7 +571,7 @@ export default function App() {
               Tableau de bord de suivi budgétaire
             </h2>
             <p className="text-xs text-zinc-400 leading-relaxed max-w-xl">
-              Suivez vos d'épenses et optimisez vos économies. Vos données restent cryptées localement pour un respect absolu de votre vie privée.
+              Suivez vos dépenses et optimisez vos économies. Vos données restent cryptées localement pour un respect absolu de votre vie privée.
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-1.5 text-xs text-emerald-300 font-bold bg-emerald-950/40 border border-emerald-900/50 px-4 py-2.5 rounded-2xl">
