@@ -667,5 +667,276 @@ app.post(
   }
 );
 
+// Helpers for converting receipt formats for REST
+function formatReceiptToRestFields(receipt: any) {
+  const fields: any = {
+    id: { stringValue: receipt.id || "" },
+    merchant: { stringValue: receipt.merchant || "" },
+    date: { stringValue: receipt.date || "" },
+    totalAmount: { doubleValue: receipt.totalAmount || 0 },
+    taxAmount: { doubleValue: receipt.taxAmount || 0 },
+    currency: { stringValue: receipt.currency || "EUR" },
+    scannedAt: { stringValue: receipt.scannedAt || "" }
+  };
+
+  if (receipt.imageUrl) {
+    fields.imageUrl = { stringValue: receipt.imageUrl };
+  }
+  if (receipt.rawResponse) {
+    fields.rawResponse = { stringValue: receipt.rawResponse };
+  }
+  if (receipt.isRecurring !== undefined) {
+    fields.isRecurring = { booleanValue: receipt.isRecurring };
+  }
+  if (receipt.recurrence) {
+    fields.recurrence = { stringValue: receipt.recurrence };
+  }
+
+  // Handle items array
+  const itemsArray = (receipt.items || []).map((item: any) => {
+    const itemFields: any = {
+      id: { stringValue: item.id || "" },
+      name: { stringValue: item.name || "" },
+      quantity: { doubleValue: item.quantity || 1 },
+      price: { doubleValue: item.price || 0 },
+      category: { stringValue: item.category || "Autre" }
+    };
+    if (item.unitPrice !== undefined) {
+      itemFields.unitPrice = { doubleValue: item.unitPrice };
+    }
+    return {
+      mapValue: {
+        fields: itemFields
+      }
+    };
+  });
+
+  fields.items = {
+    arrayValue: {
+      values: itemsArray
+    }
+  };
+
+  return fields;
+}
+
+function parseRestFieldsToReceipt(fields: any): any {
+  const getVal = (field: any) => {
+    if (!field) return undefined;
+    if (field.stringValue !== undefined) return field.stringValue;
+    if (field.doubleValue !== undefined) return parseFloat(field.doubleValue);
+    if (field.integerValue !== undefined) return parseInt(field.integerValue, 10);
+    if (field.booleanValue !== undefined) return !!field.booleanValue;
+    return undefined;
+  };
+
+  const receipt: any = {
+    id: getVal(fields.id) || "",
+    merchant: getVal(fields.merchant) || "",
+    date: getVal(fields.date) || "",
+    totalAmount: getVal(fields.totalAmount) || 0,
+    taxAmount: getVal(fields.taxAmount) || 0,
+    currency: getVal(fields.currency) || "EUR",
+    scannedAt: getVal(fields.scannedAt) || "",
+    items: []
+  };
+
+  if (fields.imageUrl) receipt.imageUrl = getVal(fields.imageUrl);
+  if (fields.rawResponse) receipt.rawResponse = getVal(fields.rawResponse);
+  if (fields.isRecurring) receipt.isRecurring = getVal(fields.isRecurring);
+  if (fields.recurrence) receipt.recurrence = getVal(fields.recurrence);
+
+  if (fields.items && fields.items.arrayValue && fields.items.arrayValue.values) {
+    receipt.items = fields.items.arrayValue.values.map((val: any) => {
+      const itemFields = val.mapValue?.fields || {};
+      const item: any = {
+        id: getVal(itemFields.id) || "",
+        name: getVal(itemFields.name) || "",
+        quantity: getVal(itemFields.quantity) || 1,
+        price: getVal(itemFields.price) || 0,
+        category: getVal(itemFields.category) || "Autre"
+      };
+      if (itemFields.unitPrice) {
+        item.unitPrice = getVal(itemFields.unitPrice);
+      }
+      return item;
+    });
+  }
+
+  return receipt;
+}
+
+// 3. Endpoint to save user premium status (POST)
+app.post("/api/users/:userId/premium", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { isPremium } = req.body;
+    await setPremiumStatusRest(userId, isPremium);
+    res.json({ success: true });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 4. Endpoint to fetch user premium status (GET)
+app.get("/api/users/:userId/premium", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!firebaseProjectId) {
+      res.json({ success: true, isPremium: false });
+      return;
+    }
+    const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}?key=${firebaseApiKey}`;
+    const response = await fetch(url);
+    if (response.status === 404) {
+      res.json({ success: true, isPremium: false });
+      return;
+    }
+    if (response.ok) {
+      const data = await response.json() as any;
+      const isPremium = !!data.fields?.isPremium?.booleanValue;
+      res.json({ success: true, isPremium });
+    } else {
+      const errText = await response.text();
+      res.status(response.status).json({ success: false, error: errText });
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 5. Endpoint to get user receipts (GET)
+app.get("/api/users/:userId/receipts", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    if (!firebaseProjectId) {
+      res.json({ success: true, receipts: [] });
+      return;
+    }
+    const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}/receipts?key=${firebaseApiKey}`;
+    const response = await fetch(url);
+    if (response.status === 404) {
+      res.json({ success: true, receipts: [] });
+      return;
+    }
+    if (response.ok) {
+      const data = await response.json() as any;
+      const documents = data.documents || [];
+      const receipts = documents.map((doc: any) => {
+        const fields = doc.fields || {};
+        return parseRestFieldsToReceipt(fields);
+      });
+      res.json({ success: true, receipts });
+    } else {
+      const errText = await response.text();
+      res.status(response.status).json({ success: false, error: errText });
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 6. Endpoint to save single receipt (POST)
+app.post("/api/users/:userId/receipts", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { receipt } = req.body;
+    if (!firebaseProjectId) {
+      res.status(400).json({ success: false, error: "No Firebase configured" });
+      return;
+    }
+    const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}/receipts/${receipt.id}?key=${firebaseApiKey}`;
+    const body = {
+      fields: formatReceiptToRestFields(receipt)
+    };
+
+    const response = await fetch(url, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+
+    if (response.ok) {
+      res.json({ success: true });
+    } else {
+      const errText = await response.text();
+      res.status(response.status).json({ success: false, error: errText });
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 7. Endpoint to delete single receipt (DELETE)
+app.delete("/api/users/:userId/receipts/:receiptId", async (req, res) => {
+  try {
+    const { userId, receiptId } = req.params;
+    if (!firebaseProjectId) {
+      res.status(400).json({ success: false, error: "No Firebase configured" });
+      return;
+    }
+    const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}/receipts/${receiptId}?key=${firebaseApiKey}`;
+    const response = await fetch(url, {
+      method: "DELETE"
+    });
+    if (response.ok) {
+      res.json({ success: true });
+    } else {
+      const errText = await response.text();
+      res.status(response.status).json({ success: false, error: errText });
+    }
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 8. Bulk Sync receipts endpoint (POST)
+app.post("/api/users/:userId/receipts/bulk-sync", async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { receipts } = req.body || { receipts: [] };
+    if (!firebaseProjectId) {
+      res.json({ success: true, receipts });
+      return;
+    }
+    
+    // Get current cloud receipts
+    const cloudUrl = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}/receipts?key=${firebaseApiKey}`;
+    const cloudResponse = await fetch(cloudUrl);
+    let cloudReceipts: any[] = [];
+    if (cloudResponse.ok) {
+      const data = await cloudResponse.json() as any;
+      const documents = data.documents || [];
+      cloudReceipts = documents.map((doc: any) => {
+        const fields = doc.fields || {};
+        return parseRestFieldsToReceipt(fields);
+      });
+    }
+    
+    const cloudIds = new Set(cloudReceipts.map(r => r.id));
+    
+    // Upload missing ones
+    for (const local of receipts) {
+      if (!cloudIds.has(local.id)) {
+        const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}/receipts/${local.id}?key=${firebaseApiKey}`;
+        const body = {
+          fields: formatReceiptToRestFields(local)
+        };
+        await fetch(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
+        cloudReceipts.push(local);
+      }
+    }
+    
+    cloudReceipts.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+    res.json({ success: true, receipts: cloudReceipts });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 export { app };
 export default app;

@@ -140,6 +140,22 @@ export async function validateFirestoreConnection(): Promise<boolean> {
  * Sync helper: Fetch all receipts stored under user subcollection
  */
 export async function fetchUserReceipts(userId: string): Promise<Receipt[]> {
+  // Try calling our ultra-reliable backend REST proxy API first!
+  try {
+    const res = await fetch(`/api/users/${userId}/receipts`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.receipts)) {
+        return data.receipts;
+      }
+    }
+  } catch (apiErr) {
+    console.warn(
+      'API fetch receipts failed, trying client SDK fallback:',
+      apiErr,
+    );
+  }
+
   if (!IS_FIREBASE_REAL || !db) return [];
   const colPath = `users/${userId}/receipts`;
   try {
@@ -166,6 +182,23 @@ export async function saveUserReceiptToCloud(
   userId: string,
   receipt: Receipt,
 ): Promise<void> {
+  // Try calling our ultra-reliable backend REST proxy API first!
+  try {
+    const res = await fetch(`/api/users/${userId}/receipts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receipt }),
+    });
+    if (res.ok) {
+      return;
+    }
+  } catch (apiErr) {
+    console.warn(
+      'API save receipt failed, trying client SDK fallback:',
+      apiErr,
+    );
+  }
+
   if (!IS_FIREBASE_REAL || !db) return;
   const docPath = `users/${userId}/receipts/${receipt.id}`;
   try {
@@ -182,6 +215,21 @@ export async function deleteUserReceiptFromCloud(
   userId: string,
   receiptId: string,
 ): Promise<void> {
+  // Try calling our ultra-reliable backend REST proxy API first!
+  try {
+    const res = await fetch(`/api/users/${userId}/receipts/${receiptId}`, {
+      method: 'DELETE',
+    });
+    if (res.ok) {
+      return;
+    }
+  } catch (apiErr) {
+    console.warn(
+      'API delete receipt failed, trying client SDK fallback:',
+      apiErr,
+    );
+  }
+
   if (!IS_FIREBASE_REAL || !db) return;
   const docPath = `users/${userId}/receipts/${receiptId}`;
   try {
@@ -198,6 +246,23 @@ export async function syncLocalReceiptsToCloud(
   userId: string,
   localReceipts: Receipt[],
 ): Promise<Receipt[]> {
+  // Try calling our ultra-reliable backend REST bulk sync API first!
+  try {
+    const res = await fetch(`/api/users/${userId}/receipts/bulk-sync`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ receipts: localReceipts }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && Array.isArray(data.receipts)) {
+        return data.receipts;
+      }
+    }
+  } catch (apiErr) {
+    console.warn('API bulk sync failed, trying client SDK fallback:', apiErr);
+  }
+
   if (!IS_FIREBASE_REAL || !db) return localReceipts;
 
   try {
@@ -227,15 +292,36 @@ export async function saveUserPremiumStatus(
   userId: string,
   isPremium: boolean,
 ): Promise<void> {
+  // Try calling our ultra-reliable backend REST proxy API first!
+  try {
+    const res = await fetch(`/api/users/${userId}/premium`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ isPremium }),
+    });
+    if (res.ok) {
+      console.log(
+        `[SmartReceipt API] Premium status updated to ${isPremium} via API for ${userId}`,
+      );
+      return;
+    }
+  } catch (apiErr) {
+    console.warn(
+      'API save premium failed, trying client SDK fallback:',
+      apiErr,
+    );
+  }
+
   if (!IS_FIREBASE_REAL || !db) return;
   const docPath = `users/${userId}`;
   try {
     await setDoc(doc(db, docPath), { isPremium }, { merge: true });
     console.log(
-      `[SmartReceipt] Premium status updated to ${isPremium} in Cloud for ${userId}`,
+      `[SmartReceipt SDK] Premium status updated to ${isPremium} in Cloud for ${userId}`,
     );
   } catch (err) {
     console.warn("Erreur d'enregistrement premium sur Firestore :", err);
+    throw err;
   }
 }
 
@@ -243,6 +329,22 @@ export async function saveUserPremiumStatus(
  * Fetch user custom premium subscription status from Firestore
  */
 export async function fetchUserPremiumStatus(userId: string): Promise<boolean> {
+  // Try calling our ultra-reliable backend REST proxy API first!
+  try {
+    const res = await fetch(`/api/users/${userId}/premium`);
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        return !!data.isPremium;
+      }
+    }
+  } catch (apiErr) {
+    console.warn(
+      'API fetch premium failed, trying client SDK fallback:',
+      apiErr,
+    );
+  }
+
   if (!IS_FIREBASE_REAL || !db) return false;
   const docPath = `users/${userId}`;
   try {
