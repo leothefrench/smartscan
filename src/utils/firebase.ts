@@ -1,24 +1,30 @@
-import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, signInWithCustomToken, User, signInAnonymously } from "firebase/auth";
-import { 
-  getFirestore, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  collection, 
-  deleteDoc, 
-  query, 
-  getDocFromServer 
-} from "firebase/firestore";
-import firebaseConfig from "../firebase-applet-config.json";
-import { Receipt } from "../types";
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import {
+  getAuth,
+  signInWithCustomToken,
+  User,
+  signInAnonymously,
+} from 'firebase/auth';
+import {
+  getFirestore,
+  initializeFirestore,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  collection,
+  deleteDoc,
+  query,
+  getDocFromServer,
+} from 'firebase/firestore';
+import firebaseConfig from '../firebase-applet-config.json';
+import { Receipt } from '../types';
 
 // Check if configuration is realistic
-export const IS_FIREBASE_REAL = 
-  firebaseConfig && 
-  firebaseConfig.apiKey && 
-  firebaseConfig.apiKey !== "PLACEHOLDER_KEY";
+export const IS_FIREBASE_REAL =
+  firebaseConfig &&
+  firebaseConfig.apiKey &&
+  firebaseConfig.apiKey !== 'PLACEHOLDER_KEY';
 
 let app;
 let authInstance: any = null;
@@ -27,14 +33,30 @@ let dbInstance: any = null;
 if (IS_FIREBASE_REAL) {
   try {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    dbInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
+    try {
+      // Force HTTP long-polling to prevent WebSocket connection failures on mobile devices, VPNs, and in-app webviews
+      dbInstance = initializeFirestore(app, {
+        experimentalForceLongPolling: true,
+      });
+    } catch (e) {
+      dbInstance = getFirestore(
+        app,
+        firebaseConfig.firestoreDatabaseId || '(default)',
+      );
+    }
     authInstance = getAuth(app);
     // Silent anonymous auth in background to populate request.auth for secure Firestore writes
     signInAnonymously(authInstance).catch((err) => {
-      console.warn("Silent anonymous sign-in failed or anonymous provider is not enabled in Firebase console yet:", err);
+      console.warn(
+        'Silent anonymous sign-in failed or anonymous provider is not enabled in Firebase console yet:',
+        err,
+      );
     });
   } catch (error) {
-    console.warn("Erreur d'initialisation de Firebase, repli sur le stockage local :", error);
+    console.warn(
+      "Erreur d'initialisation de Firebase, repli sur le stockage local :",
+      error,
+    );
   }
 }
 
@@ -43,12 +65,12 @@ export const db = dbInstance;
 
 // Required error reporting structures as per high-integrity standards
 export enum OperationType {
-  CREATE = "create",
-  UPDATE = "update",
-  DELETE = "delete",
-  LIST = "list",
-  GET = "get",
-  WRITE = "write",
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
 }
 
 export interface FirestoreErrorInfo {
@@ -65,28 +87,33 @@ export interface FirestoreErrorInfo {
       providerId?: string | null;
       email?: string | null;
     }[];
-  }
+  };
 }
 
-export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null,
+) {
   const currentAuth = auth;
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: currentAuth?.currentUser?.uid || "NO_USER",
-      email: currentAuth?.currentUser?.email || "NO_EMAIL",
+      userId: currentAuth?.currentUser?.uid || 'NO_USER',
+      email: currentAuth?.currentUser?.email || 'NO_EMAIL',
       emailVerified: currentAuth?.currentUser?.emailVerified || false,
       isAnonymous: currentAuth?.currentUser?.isAnonymous || false,
       tenantId: currentAuth?.currentUser?.tenantId || null,
-      providerInfo: currentAuth?.currentUser?.providerData?.map(provider => ({
-        providerId: provider.providerId,
-        email: provider.email,
-      })) || []
+      providerInfo:
+        currentAuth?.currentUser?.providerData?.map((provider) => ({
+          providerId: provider.providerId,
+          email: provider.email,
+        })) || [],
     },
     operationType,
-    path
+    path,
   };
-  console.error("Firestore Error: ", JSON.stringify(errInfo));
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -97,11 +124,13 @@ export async function validateFirestoreConnection(): Promise<boolean> {
   if (!IS_FIREBASE_REAL || !db) return false;
   try {
     // Check if the client is connected
-    await getDocFromServer(doc(db, "test", "connection"));
+    await getDocFromServer(doc(db, 'test', 'connection'));
     return true;
   } catch (error: any) {
-    if (error?.message?.includes("the client is offline")) {
-      console.error("Please check your Firebase configuration or network connectivity.");
+    if (error?.message?.includes('the client is offline')) {
+      console.error(
+        'Please check your Firebase configuration or network connectivity.',
+      );
     }
     return false;
   }
@@ -120,7 +149,10 @@ export async function fetchUserReceipts(userId: string): Promise<Receipt[]> {
       items.push(docSnap.data() as Receipt);
     });
     // Sort by scanned date descending
-    return items.sort((a,b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+    return items.sort(
+      (a, b) =>
+        new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime(),
+    );
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, colPath);
     return [];
@@ -130,7 +162,10 @@ export async function fetchUserReceipts(userId: string): Promise<Receipt[]> {
 /**
  * Sync helper: Save single receipt to Firestore
  */
-export async function saveUserReceiptToCloud(userId: string, receipt: Receipt): Promise<void> {
+export async function saveUserReceiptToCloud(
+  userId: string,
+  receipt: Receipt,
+): Promise<void> {
   if (!IS_FIREBASE_REAL || !db) return;
   const docPath = `users/${userId}/receipts/${receipt.id}`;
   try {
@@ -143,7 +178,10 @@ export async function saveUserReceiptToCloud(userId: string, receipt: Receipt): 
 /**
  * Sync helper: Delete single receipt from Firestore
  */
-export async function deleteUserReceiptFromCloud(userId: string, receiptId: string): Promise<void> {
+export async function deleteUserReceiptFromCloud(
+  userId: string,
+  receiptId: string,
+): Promise<void> {
   if (!IS_FIREBASE_REAL || !db) return;
   const docPath = `users/${userId}/receipts/${receiptId}`;
   try {
@@ -156,25 +194,28 @@ export async function deleteUserReceiptFromCloud(userId: string, receiptId: stri
 /**
  * Bulk Sync: Send unsynced local receipts to Cloud
  */
-export async function syncLocalReceiptsToCloud(userId: string, localReceipts: Receipt[]): Promise<Receipt[]> {
+export async function syncLocalReceiptsToCloud(
+  userId: string,
+  localReceipts: Receipt[],
+): Promise<Receipt[]> {
   if (!IS_FIREBASE_REAL || !db) return localReceipts;
-  
+
   try {
     // 1. Fetch current cloud state
     const cloudReceipts = await fetchUserReceipts(userId);
-    const cloudIds = new Set(cloudReceipts.map(r => r.id));
-    
+    const cloudIds = new Set(cloudReceipts.map((r) => r.id));
+
     // 2. Upload missing ones
     for (const local of localReceipts) {
       if (!cloudIds.has(local.id)) {
         await saveUserReceiptToCloud(userId, local);
       }
     }
-    
+
     // 3. Re-fetch final unified list
     return await fetchUserReceipts(userId);
   } catch (err) {
-    console.error("Erreur de synchronisation globale :", err);
+    console.error('Erreur de synchronisation globale :', err);
     return localReceipts;
   }
 }
@@ -182,12 +223,17 @@ export async function syncLocalReceiptsToCloud(userId: string, localReceipts: Re
 /**
  * Save user custom premium subscription status in Firestore
  */
-export async function saveUserPremiumStatus(userId: string, isPremium: boolean): Promise<void> {
+export async function saveUserPremiumStatus(
+  userId: string,
+  isPremium: boolean,
+): Promise<void> {
   if (!IS_FIREBASE_REAL || !db) return;
   const docPath = `users/${userId}`;
   try {
     await setDoc(doc(db, docPath), { isPremium }, { merge: true });
-    console.log(`[SmartReceipt] Premium status updated to ${isPremium} in Cloud for ${userId}`);
+    console.log(
+      `[SmartReceipt] Premium status updated to ${isPremium} in Cloud for ${userId}`,
+    );
   } catch (err) {
     console.warn("Erreur d'enregistrement premium sur Firestore :", err);
   }
@@ -205,7 +251,7 @@ export async function fetchUserPremiumStatus(userId: string): Promise<boolean> {
       return !!docSnap.data()?.isPremium;
     }
   } catch (err) {
-    console.warn("Erreur de récupération premium depuis Firestore :", err);
+    console.warn('Erreur de récupération premium depuis Firestore :', err);
   }
   return false;
 }
