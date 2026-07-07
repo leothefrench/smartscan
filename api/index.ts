@@ -4,7 +4,6 @@ import { GoogleGenAI, Type } from "@google/genai";
 import fs from "fs";
 import path from "path";
 import Stripe from "stripe";
-import firebaseConfig from "../firebase-applet-config.json";
 
 dotenv.config();
 
@@ -62,10 +61,35 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 // Initialize Firebase / Firestore parameters for lightweight REST OTP storage (essential for Vercel stateless Serverless environments)
-const firebaseProjectId = firebaseConfig.projectId || "";
-const firebaseApiKey = firebaseConfig.apiKey || "";
+let firebaseProjectId = "smartscan-a408c";
+let firebaseApiKey = "AIzaSyDC7eEExEyNJASfLPPUQLZENNKl3UjroAA";
 
-console.log("[SmartReceipt] Firebase REST configuration loaded from static bundle. Project ID:", firebaseProjectId);
+try {
+  const pathsToTry = [
+    path.join(process.cwd(), "firebase-applet-config.json"),
+    path.join(process.cwd(), "..", "firebase-applet-config.json"),
+    path.join(__dirname, "..", "firebase-applet-config.json"),
+    path.join(__dirname, "..", "..", "firebase-applet-config.json"),
+  ];
+  let loaded = false;
+  for (const p of pathsToTry) {
+    if (fs.existsSync(p)) {
+      const config = JSON.parse(fs.readFileSync(p, "utf-8"));
+      firebaseProjectId = config.projectId || firebaseProjectId;
+      firebaseApiKey = config.apiKey || firebaseApiKey;
+      console.log("[SmartReceipt] Configuration Firebase REST chargée dynamiquement depuis :", p);
+      loaded = true;
+      break;
+    }
+  }
+  if (!loaded) {
+    console.log("[SmartReceipt] Fichier de configuration Firebase introuvable au runtime. Utilisation des constantes de secours.");
+  }
+} catch (err) {
+  console.warn("[SmartReceipt] Échec du chargement dynamique de la configuration Firebase. Utilisation des constantes de secours :", err);
+}
+
+console.log("[SmartReceipt] Firebase REST configuration loaded. Project ID:", firebaseProjectId);
 
 // In-Memory fallback registry for local mock operations
 const fallbackOtpStorage = new Map<string, { code: string; expiresAt: number }>();
