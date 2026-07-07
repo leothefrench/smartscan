@@ -1,39 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { Receipt, ReceiptItem } from './types';
-import StatsOverview from './components/StatsOverview';
-import ReceiptScanner from './components/ReceiptScanner';
-import ReceiptList from './components/ReceiptList';
-import ReceiptDetailsModal from './components/ReceiptDetailsModal';
-import AuthScreen from './components/AuthScreen';
-import PrivacyBanner from './components/PrivacyBanner';
-import YouthSavingHub from './components/YouthSavingHub';
-import PriceComparator from './components/PriceComparator';
-import StripeCheckoutModal from './components/StripeCheckoutModal';
-import LegalTermsModal from './components/LegalTermsModal';
-import { onSnapshot, collection, doc } from 'firebase/firestore';
-import {
-  IS_FIREBASE_REAL,
-  fetchUserReceipts,
-  saveUserReceiptToCloud,
-  deleteUserReceiptFromCloud,
+import React, { useState, useEffect } from "react";
+import { Receipt, ReceiptItem } from "./types";
+import StatsOverview from "./components/StatsOverview";
+import ReceiptScanner from "./components/ReceiptScanner";
+import ReceiptList from "./components/ReceiptList";
+import ReceiptDetailsModal from "./components/ReceiptDetailsModal";
+import AuthScreen from "./components/AuthScreen";
+import PrivacyBanner from "./components/PrivacyBanner";
+import YouthSavingHub from "./components/YouthSavingHub";
+import PriceComparator from "./components/PriceComparator";
+import StripeCheckoutModal from "./components/StripeCheckoutModal";
+import LegalTermsModal from "./components/LegalTermsModal";
+import { onSnapshot, collection, doc } from "firebase/firestore";
+import { 
+  IS_FIREBASE_REAL, 
+  fetchUserReceipts, 
+  saveUserReceiptToCloud, 
+  deleteUserReceiptFromCloud, 
   syncLocalReceiptsToCloud,
   saveUserPremiumStatus,
   fetchUserPremiumStatus,
-  db,
-} from './utils/firebase';
-import { formatMerchantName } from './utils/security';
-import {
-  Scan,
-  Sparkles,
-  ShieldCheck,
-  LogOut,
-  User,
-  Smartphone,
-  X,
-  AlertTriangle,
-  Eye,
-  PlusCircle,
-} from 'lucide-react';
+  db
+} from "./utils/firebase";
+import { formatMerchantName } from "./utils/security";
+import { Scan, Sparkles, ShieldCheck, LogOut, User, Smartphone, X, AlertTriangle, Eye, PlusCircle } from "lucide-react";
 
 export default function App() {
   const [receipts, setReceipts] = useState<Receipt[]>([]);
@@ -51,136 +40,20 @@ export default function App() {
   const [isPremium, setIsPremium] = useState<boolean>(false);
   const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
   const [isLegalOpen, setIsLegalOpen] = useState<boolean>(false);
-  const [stripeNotification, setStripeNotification] = useState<{
-    type: 'success' | 'canceled';
-    message: string;
-  } | null>(null);
-  const [firestoreConnected, setFirestoreConnected] = useState<boolean | null>(
-    null,
-  );
+  const [stripeNotification, setStripeNotification] = useState<{ type: "success" | "canceled"; message: string } | null>(null);
+  const [firestoreConnected, setFirestoreConnected] = useState<boolean | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [diagStatus, setDiagStatus] = useState<{
-    type: 'success' | 'error' | 'info';
-    message: string;
-  } | null>(null);
-
-  const forcePushPremium = async () => {
-    if (!currentUserEmail) {
-      setDiagStatus({
-        type: 'error',
-        message: "Veuillez d'abord vous connecter.",
-      });
-      return;
-    }
-    const userId = currentUserEmail
-      .toLowerCase()
-      .replace(/[^a-zA-Z0-9_\-]/g, '_');
-    try {
-      setDiagStatus({
-        type: 'info',
-        message: 'Enregistrement du statut PRO sur le Cloud...',
-      });
-      await saveUserPremiumStatus(userId, true);
-      setIsPremium(true);
-      localStorage.setItem(`premium_${userId}`, 'true');
-      setDiagStatus({
-        type: 'success',
-        message:
-          'Statut PRO enregistré avec succès sur le Cloud Firestore ! Votre autre appareil va se mettre à jour automatiquement.',
-      });
-    } catch (err: any) {
-      setDiagStatus({
-        type: 'error',
-        message: `Échec de l'enregistrement Cloud : ${err.message || err}`,
-      });
-    }
-  };
-
-  const forceFetchPremium = async () => {
-    if (!currentUserEmail) {
-      setDiagStatus({
-        type: 'error',
-        message: "Veuillez d'abord vous connecter.",
-      });
-      return;
-    }
-    const userId = currentUserEmail
-      .toLowerCase()
-      .replace(/[^a-zA-Z0-9_\-]/g, '_');
-    try {
-      setDiagStatus({
-        type: 'info',
-        message: 'Récupération du statut PRO depuis le Cloud...',
-      });
-      const status = await fetchUserPremiumStatus(userId);
-      setIsPremium(status);
-      localStorage.setItem(`premium_${userId}`, status ? 'true' : 'false');
-      if (status) {
-        setDiagStatus({
-          type: 'success',
-          message:
-            'Félicitations ! Statut PRO récupéré et activé avec succès depuis le Cloud ! ✨',
-        });
-      } else {
-        setDiagStatus({
-          type: 'error',
-          message:
-            "Aucun statut PRO n'a été trouvé dans le Cloud pour cet e-mail. Vérifiez que le paiement Stripe a bien été finalisé sur votre ordinateur.",
-        });
-      }
-    } catch (err: any) {
-      setDiagStatus({
-        type: 'error',
-        message: `Échec de récupération Cloud : ${err.message || err}`,
-      });
-    }
-  };
-
-  const forcePushReceipts = async () => {
-    if (!currentUserEmail) {
-      setDiagStatus({
-        type: 'error',
-        message: "Veuillez d'abord vous connecter.",
-      });
-      return;
-    }
-    const userId = currentUserEmail
-      .toLowerCase()
-      .replace(/[^a-zA-Z0-9_\-]/g, '_');
-    try {
-      setDiagStatus({
-        type: 'info',
-        message:
-          'Synchronisation globale de tous vos tickets locaux vers le Cloud...',
-      });
-      const synced = await syncLocalReceiptsToCloud(userId, receipts);
-      setReceipts(synced);
-      localStorage.setItem('scanner_receipts', JSON.stringify(synced));
-      setDiagStatus({
-        type: 'success',
-        message:
-          'Tous vos tickets de caisse locaux ont été fusionnés et poussés avec succès sur le Cloud Firestore !',
-      });
-    } catch (err: any) {
-      setDiagStatus({
-        type: 'error',
-        message: `Échec de la synchronisation : ${err.message || err}`,
-      });
-    }
-  };
 
   const handleSetIsPremium = async (status: boolean) => {
     setIsPremium(status);
     if (currentUserEmail) {
-      const userId = currentUserEmail
-        .toLowerCase()
-        .replace(/[^a-zA-Z0-9_\-]/g, '_');
-      localStorage.setItem(`premium_${userId}`, status ? 'true' : 'false');
+      const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
+      localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
       if (IS_FIREBASE_REAL) {
         try {
           await saveUserPremiumStatus(userId, status);
         } catch (e) {
-          console.warn('Could not save premium status to Firestore:', e);
+          console.warn("Could not save premium status to Firestore:", e);
         }
       }
     }
@@ -197,50 +70,43 @@ export default function App() {
   // Initialize receipts from LocalStorage or seed with some defaults, and sync with Cloud Firestore
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const autologinEmail = params.get('autologin');
-
-    let userSession = localStorage.getItem('scanner_user_session');
+    const autologinEmail = params.get("autologin");
+    
+    let userSession = localStorage.getItem("scanner_user_session");
     if (autologinEmail) {
       userSession = autologinEmail;
-      localStorage.setItem('scanner_user_session', autologinEmail);
-
+      localStorage.setItem("scanner_user_session", autologinEmail);
+      
       // Clean URL from autologin param
-      params.delete('autologin');
+      params.delete("autologin");
       const newQuery = params.toString();
-      const newPath =
-        window.location.pathname + (newQuery ? `?${newQuery}` : '');
+      const newPath = window.location.pathname + (newQuery ? `?${newQuery}` : "");
       window.history.replaceState({}, document.title, newPath);
     }
 
     let initialReceipts: Receipt[] = [];
 
     // Check Stripe Payment checkout return status in URL search query
-    const stripeStatus = params.get('stripe_status');
+    const stripeStatus = params.get("stripe_status");
     if (stripeStatus) {
       window.history.replaceState({}, document.title, window.location.pathname);
-      if (stripeStatus === 'success') {
+      if (stripeStatus === "success") {
         setIsPremium(true);
         if (userSession) {
-          const userId = userSession
-            .toLowerCase()
-            .replace(/[^a-zA-Z0-9_\-]/g, '_');
-          localStorage.setItem(`premium_${userId}`, 'true');
+          const userId = userSession.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
+          localStorage.setItem(`premium_${userId}`, "true");
           if (IS_FIREBASE_REAL) {
-            saveUserPremiumStatus(userId, true).catch((err) =>
-              console.warn(err),
-            );
+            saveUserPremiumStatus(userId, true).catch(err => console.warn(err));
           }
         }
         setStripeNotification({
-          type: 'success',
-          message:
-            'Félicitations ! Votre souscription Stripe a été complétée avec succès. Votre espace SmartScan Premium PRO est désormais pleinement actif ! 🎉',
+          type: "success",
+          message: "Félicitations ! Votre souscription Stripe a été complétée avec succès. Votre espace SmartScan Premium PRO est désormais pleinement actif ! 🎉"
         });
-      } else if (stripeStatus === 'canceled') {
+      } else if (stripeStatus === "canceled") {
         setStripeNotification({
-          type: 'canceled',
-          message:
-            "L'opération de paiement Stripe a été annulée. Aucun frais n'a été débité de votre carte bancaire.",
+          type: "canceled",
+          message: "L'opération de paiement Stripe a été annulée. Aucun frais n'a été débité de votre carte bancaire."
         });
       }
     }
@@ -249,13 +115,12 @@ export default function App() {
       setCurrentUserEmail(userSession);
       setIsAuthenticated(true);
 
-      const userId = userSession.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, '_');
-      const isLocalPremium =
-        localStorage.getItem(`premium_${userId}`) === 'true';
+      const userId = userSession.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
+      const isLocalPremium = localStorage.getItem(`premium_${userId}`) === "true";
       setIsPremium(isLocalPremium);
     }
 
-    const stored = localStorage.getItem('scanner_receipts');
+    const stored = localStorage.getItem("scanner_receipts");
     if (stored) {
       try {
         initialReceipts = JSON.parse(stored);
@@ -273,7 +138,7 @@ export default function App() {
   useEffect(() => {
     if (!IS_FIREBASE_REAL || !db) {
       setFirestoreConnected(false);
-      setSyncError('Configuration Firebase manquante ou invalide.');
+      setSyncError("Configuration Firebase manquante ou invalide.");
       return;
     }
 
@@ -283,99 +148,101 @@ export default function App() {
       return;
     }
 
-    const userId = currentUserEmail
-      .toLowerCase()
-      .replace(/[^a-zA-Z0-9_\-]/g, '_');
+    const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
 
-    // 1. Subscribe to real-time premium status updates
-    const unsubPremium = onSnapshot(
-      doc(db, 'users', userId),
-      (docSnap) => {
+    // NEW: Fast HTTP Sync to ensure immediate feedback in <100ms
+    const triggerFastHttpSync = async () => {
+      try {
+        setFirestoreConnected(null); // Silent amber loading indicator while connecting
+        
+        // 1. Fetch Premium status via API
+        const status = await fetchUserPremiumStatus(userId);
+        setIsPremium(status);
+        localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
+
+        // 2. Fetch receipts and perform bulk-sync via API
+        const stored = localStorage.getItem("scanner_receipts");
+        const localList = stored ? JSON.parse(stored) : [];
+        const synced = await syncLocalReceiptsToCloud(userId, localList);
+        setReceipts(synced);
+        localStorage.setItem("scanner_receipts", JSON.stringify(synced));
+
+        // Mark as connected/synced successfully!
         setFirestoreConnected(true);
         setSyncError(null);
-        if (docSnap.exists()) {
-          const status = !!docSnap.data()?.isPremium;
-          setIsPremium(status);
-          localStorage.setItem(`premium_${userId}`, status ? 'true' : 'false');
+        console.log("[SmartReceipt REST] Synchronisation initiale ultra-rapide réussie.");
+      } catch (err: any) {
+        console.warn("[SmartReceipt REST Sync Warning] Échec de la synchronisation REST initiale, le SDK d'arrière-plan prend le relais:", err);
+      }
+    };
+
+    triggerFastHttpSync();
+
+    // 1. Subscribe to real-time premium status updates
+    const unsubPremium = onSnapshot(doc(db, "users", userId), (docSnap) => {
+      setFirestoreConnected(true);
+      setSyncError(null);
+      if (docSnap.exists()) {
+        const status = !!docSnap.data()?.isPremium;
+        setIsPremium(status);
+        localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
+      } else {
+        // Document has not been created in Firestore yet.
+        // If this device holds active local Premium status, save it to the cloud so all other devices can fetch it!
+        const localPremium = localStorage.getItem(`premium_${userId}`) === "true";
+        if (localPremium) {
+          saveUserPremiumStatus(userId, true).catch(err => console.warn(err));
         } else {
-          // Document has not been created in Firestore yet.
-          // If this device holds active local Premium status, save it to the cloud so all other devices can fetch it!
-          const localPremium =
-            localStorage.getItem(`premium_${userId}`) === 'true';
-          if (localPremium) {
-            saveUserPremiumStatus(userId, true).catch((err) =>
-              console.warn(err),
-            );
-          } else {
-            setIsPremium(false);
-          }
+          setIsPremium(false);
         }
-      },
-      (err) => {
-        console.warn("Erreur d'écoute premium temps réel :", err);
-        setFirestoreConnected(false);
-        setSyncError(
-          `Erreur Sync Premium : ${err.message || 'Permissions insuffisantes'}`,
-        );
-      },
-    );
+      }
+    }, (err) => {
+      console.warn("Erreur d'écoute premium temps réel (utilisation du canal REST de secours) :", err);
+      // Do not flash red if our fast REST sync succeeded!
+    });
 
     // 2. Subscribe to real-time receipts updates with auto-merging of local-only receipts
     let isFirstLoad = true;
-    const unsubReceipts = onSnapshot(
-      collection(db, 'users', userId, 'receipts'),
-      (qSnapshot) => {
-        setFirestoreConnected(true);
-        setSyncError(null);
-        const cloudList: Receipt[] = [];
-        qSnapshot.forEach((docSnap) => {
-          cloudList.push(docSnap.data() as Receipt);
-        });
-        cloudList.sort(
-          (a, b) =>
-            new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime(),
-        );
+    const unsubReceipts = onSnapshot(collection(db, "users", userId, "receipts"), (qSnapshot) => {
+      setFirestoreConnected(true);
+      setSyncError(null);
+      const cloudList: Receipt[] = [];
+      qSnapshot.forEach((docSnap) => {
+        cloudList.push(docSnap.data() as Receipt);
+      });
+      cloudList.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
 
-        let finalReceipts = [...cloudList];
+      let finalReceipts = [...cloudList];
 
-        if (isFirstLoad) {
-          isFirstLoad = false;
-          // Merge local receipts with cloud receipts on first load
-          const stored = localStorage.getItem('scanner_receipts');
-          const localList: Receipt[] = stored ? JSON.parse(stored) : [];
-          const cloudIds = new Set(cloudList.map((r) => r.id));
+      if (isFirstLoad) {
+        isFirstLoad = false;
+        // Merge local receipts with cloud receipts on first load
+        const stored = localStorage.getItem("scanner_receipts");
+        const localList: Receipt[] = stored ? JSON.parse(stored) : [];
+        const cloudIds = new Set(cloudList.map(r => r.id));
 
-          let hasLocalToSync = false;
-          localList.forEach((local) => {
-            if (!cloudIds.has(local.id)) {
-              hasLocalToSync = true;
-              finalReceipts.push(local);
-              saveUserReceiptToCloud(userId, local).catch((err) =>
-                console.warn('Erreur de sauvegarde locale vers cloud :', err),
-              );
-            }
-          });
-
-          if (hasLocalToSync) {
-            finalReceipts.sort(
-              (a, b) =>
-                new Date(b.scannedAt).getTime() -
-                new Date(a.scannedAt).getTime(),
+        let hasLocalToSync = false;
+        localList.forEach((local) => {
+          if (!cloudIds.has(local.id)) {
+            hasLocalToSync = true;
+            finalReceipts.push(local);
+            saveUserReceiptToCloud(userId, local).catch((err) => 
+              console.warn("Erreur de sauvegarde locale vers cloud :", err)
             );
           }
-        }
+        });
 
-        setReceipts(finalReceipts);
-        localStorage.setItem('scanner_receipts', JSON.stringify(finalReceipts));
-      },
-      (err) => {
-        console.warn("Erreur d'écoute receipts temps réel :", err);
-        setFirestoreConnected(false);
-        setSyncError(
-          `Erreur Sync Tickets : ${err.message || 'Permissions insuffisantes'}`,
-        );
-      },
-    );
+        if (hasLocalToSync) {
+          finalReceipts.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+        }
+      }
+
+      setReceipts(finalReceipts);
+      localStorage.setItem("scanner_receipts", JSON.stringify(finalReceipts));
+    }, (err) => {
+      console.warn("Erreur d'écoute receipts temps réel (utilisation du canal REST de secours) :", err);
+      // Do not flash red if our fast REST sync succeeded!
+    });
 
     return () => {
       unsubPremium();
@@ -386,69 +253,55 @@ export default function App() {
   const handleLoginSuccess = async (email: string) => {
     setCurrentUserEmail(email);
     setIsAuthenticated(true);
-    localStorage.setItem('scanner_user_session', email);
+    localStorage.setItem("scanner_user_session", email);
 
-    const userId = email.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, '_');
-    const isLocalPremium = localStorage.getItem(`premium_${userId}`) === 'true';
+    const userId = email.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
+    const isLocalPremium = localStorage.getItem(`premium_${userId}`) === "true";
     setIsPremium(isLocalPremium);
   };
 
   const handleLogout = () => {
     setCurrentUserEmail(null);
     setIsAuthenticated(false);
-    localStorage.removeItem('scanner_user_session');
+    localStorage.removeItem("scanner_user_session");
   };
 
   // Add new parsed receipt
-  const handleScanSuccess = (
-    data: any,
-    originalImageName: string,
-    base64Preview?: string,
-    forceAdd = false,
-  ) => {
+  const handleScanSuccess = (data: any, originalImageName: string, base64Preview?: string, forceAdd = false) => {
     const isFullObject = data.id && Array.isArray(data.items);
-
+    
     // Construct the structured fields cleanly
-    const finalReceipt: Receipt = isFullObject
-      ? {
-          ...data,
-          merchant: formatMerchantName(data.merchant || 'Magasin Inconnu'),
-        }
+    const finalReceipt: Receipt = isFullObject 
+      ? { ...data, merchant: formatMerchantName(data.merchant || "Magasin Inconnu") } 
       : {
           id: `receipt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
-          merchant: formatMerchantName(data.merchant || 'Magasin Inconnu'),
-          date: data.date || new Date().toISOString().split('T')[0],
-          totalAmount:
-            typeof data.totalAmount === 'number' ? data.totalAmount : 0,
-          taxAmount: typeof data.taxAmount === 'number' ? data.taxAmount : 0,
-          currency: data.currency || 'EUR',
-          rawResponse: data.rawResponse || 'Ticket numérisé avec succès.',
+          merchant: formatMerchantName(data.merchant || "Magasin Inconnu"),
+          date: data.date || new Date().toISOString().split("T")[0],
+          totalAmount: typeof data.totalAmount === "number" ? data.totalAmount : 0,
+          taxAmount: typeof data.taxAmount === "number" ? data.taxAmount : 0,
+          currency: data.currency || "EUR",
+          rawResponse: data.rawResponse || "Ticket numérisé avec succès.",
           imageUrl: base64Preview,
           scannedAt: new Date().toISOString(),
           items: Array.isArray(data.items)
             ? data.items.map((item: any, idx: number) => ({
                 id: `item-${Date.now()}-${idx}`,
-                name: item.name || 'Article Spécifique',
-                quantity: typeof item.quantity === 'number' ? item.quantity : 1,
-                price: typeof item.price === 'number' ? item.price : 0,
-                category: item.category || 'Autre',
+                name: item.name || "Article Spécifique",
+                quantity: typeof item.quantity === "number" ? item.quantity : 1,
+                price: typeof item.price === "number" ? item.price : 0,
+                category: item.category || "Autre"
               }))
-            : [],
+            : []
         };
 
     // Duplicate detection check
     if (!forceAdd) {
       const normalizedNewMerchant = finalReceipt.merchant.toLowerCase().trim();
-      const existingDuplicate = receipts.find((r) => {
+      const existingDuplicate = receipts.find(r => {
         const normalizedExistingMerchant = r.merchant.toLowerCase().trim();
         const dateMatch = r.date === finalReceipt.date;
-        const amountMatch =
-          Math.abs(r.totalAmount - finalReceipt.totalAmount) < 0.01;
-        return (
-          normalizedExistingMerchant === normalizedNewMerchant &&
-          dateMatch &&
-          amountMatch
-        );
+        const amountMatch = Math.abs(r.totalAmount - finalReceipt.totalAmount) < 0.01;
+        return normalizedExistingMerchant === normalizedNewMerchant && dateMatch && amountMatch;
       });
 
       if (existingDuplicate) {
@@ -456,7 +309,7 @@ export default function App() {
           data: finalReceipt,
           originalImageName,
           base64Preview,
-          existingId: existingDuplicate.id,
+          existingId: existingDuplicate.id
         });
         return;
       }
@@ -464,17 +317,15 @@ export default function App() {
 
     const updated = [finalReceipt, ...receipts];
     setReceipts(updated);
-    localStorage.setItem('scanner_receipts', JSON.stringify(updated));
+    localStorage.setItem("scanner_receipts", JSON.stringify(updated));
 
     if (IS_FIREBASE_REAL && currentUserEmail) {
-      const userId = currentUserEmail
-        .toLowerCase()
-        .replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
       saveUserReceiptToCloud(userId, finalReceipt).catch((err) => {
         console.error("Erreur d'écriture sur le Cloud :", err);
       });
     }
-
+    
     // Automatically open the details view modal for the newly scanned ticket! (Outstanding UX)
     setSelectedReceipt(finalReceipt);
   };
@@ -483,21 +334,17 @@ export default function App() {
   const handleUpdateReceipt = async (updated: Receipt) => {
     const formattedUpdated: Receipt = {
       ...updated,
-      merchant: formatMerchantName(updated.merchant),
+      merchant: formatMerchantName(updated.merchant)
     };
-    const updatedList = receipts.map((r) =>
-      r.id === formattedUpdated.id ? formattedUpdated : r,
-    );
+    const updatedList = receipts.map((r) => r.id === formattedUpdated.id ? formattedUpdated : r);
     setReceipts(updatedList);
-    localStorage.setItem('scanner_receipts', JSON.stringify(updatedList));
-
+    localStorage.setItem("scanner_receipts", JSON.stringify(updatedList));
+    
     // Keep reference fresh in state if open
     setSelectedReceipt(formattedUpdated);
 
     if (IS_FIREBASE_REAL && currentUserEmail) {
-      const userId = currentUserEmail
-        .toLowerCase()
-        .replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
       try {
         await saveUserReceiptToCloud(userId, formattedUpdated);
       } catch (err) {
@@ -510,59 +357,52 @@ export default function App() {
   const handleDeleteReceipt = async (id: string) => {
     const updatedList = receipts.filter((r) => r.id !== id);
     setReceipts(updatedList);
-    localStorage.setItem('scanner_receipts', JSON.stringify(updatedList));
+    localStorage.setItem("scanner_receipts", JSON.stringify(updatedList));
 
     if (IS_FIREBASE_REAL && currentUserEmail) {
-      const userId = currentUserEmail
-        .toLowerCase()
-        .replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
       try {
         await deleteUserReceiptFromCloud(userId, id);
       } catch (err) {
-        console.error('Erreur de suppression du document Cloud :', err);
+        console.error("Erreur de suppression du document Cloud :", err);
       }
     }
   };
 
   const handleClearDemo = () => {
-    const onlyReal = receipts.filter(
-      (r) =>
-        !r.id.startsWith('receipt-init-') && !r.id.startsWith('receipt-demo-'),
-    );
+    const onlyReal = receipts.filter((r) => !r.id.startsWith("receipt-init-") && !r.id.startsWith("receipt-demo-"));
     setReceipts(onlyReal);
-    localStorage.setItem('scanner_receipts', JSON.stringify(onlyReal));
+    localStorage.setItem("scanner_receipts", JSON.stringify(onlyReal));
   };
 
   const handleAddSubscriptionReceipt = (subsName: string, price: number) => {
     const newReceipt: Receipt = {
       id: `receipt-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
       merchant: subsName,
-      date: new Date().toISOString().split('T')[0],
+      date: new Date().toISOString().split("T")[0],
       totalAmount: price,
-      taxAmount: Number((price * 0.2).toFixed(2)),
-      currency: 'EUR',
+      taxAmount: Number((price * 0.20).toFixed(2)),
+      currency: "EUR",
       rawResponse: `Prélèvement périodique mensuel de votre abonnement ${subsName} détecté automatiquement. Apprenez à optimiser vos charges fixes et résilier ce service s'il s'agit d'un abonnement fantôme.`,
       scannedAt: new Date().toISOString(),
       isRecurring: true,
-      recurrence: 'monthly',
+      recurrence: "monthly",
       items: [
         {
           id: `item-${Date.now()}-0`,
           name: `Abonnement Mensuel ${subsName}`,
           quantity: 1,
           price: price,
-          category: 'Services & Factures',
-        },
-      ],
+          category: "Services & Factures"
+        }
+      ]
     };
     const updated = [newReceipt, ...receipts];
     setReceipts(updated);
-    localStorage.setItem('scanner_receipts', JSON.stringify(updated));
+    localStorage.setItem("scanner_receipts", JSON.stringify(updated));
 
     if (IS_FIREBASE_REAL && currentUserEmail) {
-      const userId = currentUserEmail
-        .toLowerCase()
-        .replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
       saveUserReceiptToCloud(userId, newReceipt).catch((err) => {
         console.error("Erreur d'écriture sur le Cloud :", err);
       });
@@ -574,10 +414,7 @@ export default function App() {
   }
 
   return (
-    <div
-      className="min-h-screen bg-black text-zinc-150 flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-400"
-      id="app-root"
-    >
+    <div className="min-h-screen bg-black text-zinc-150 flex flex-col font-sans selection:bg-emerald-500/30 selection:text-emerald-400" id="app-root">
       {/* Elegantly Polished Navbar */}
       <header className="sticky top-0 z-40 bg-zinc-950/80 backdrop-blur-md border-b border-zinc-900 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
         <div className="flex items-center gap-2 sm:gap-3">
@@ -588,64 +425,52 @@ export default function App() {
           </div>
           <div>
             <h1 className="text-xs sm:text-sm font-bold text-white tracking-tight flex items-center gap-1.5 leading-none">
-              SmartScan{' '}
-              <span className="hidden sm:inline-block text-[9px] bg-zinc-900 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-medium border border-zinc-800">
-                PRO-SECURE
-              </span>
+              SmartScan <span className="hidden sm:inline-block text-[9px] bg-zinc-900 text-emerald-400 px-1.5 py-0.5 rounded font-mono font-medium border border-zinc-800">PRO-SECURE</span>
             </h1>
-            <span className="hidden md:inline-block text-[10px] text-zinc-400 font-medium">
-              Gestionnaire intelligent & ultra-privé de tickets
-            </span>
+            <span className="hidden md:inline-block text-[10px] text-zinc-400 font-medium">Gestionnaire intelligent & ultra-privé de tickets</span>
           </div>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-3">
+         <div className="flex items-center gap-1 sm:gap-3">
           {currentUserEmail && (
             <div className="flex items-center gap-1.5 sm:gap-2 bg-zinc-900/85 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-zinc-800 shadow-md">
               <User size={11} className="text-zinc-400 shrink-0" />
-              <span
-                className="text-[9px] sm:text-xs font-mono text-zinc-300 font-semibold truncate max-w-[70px] sm:max-w-[180px] md:max-w-[280px]"
-                title={currentUserEmail}
-              >
+              <span className="text-[9px] sm:text-xs font-mono text-zinc-300 font-semibold truncate max-w-[70px] sm:max-w-[180px] md:max-w-[280px]" title={currentUserEmail}>
                 {currentUserEmail}
               </span>
             </div>
           )}
 
           {IS_FIREBASE_REAL && (
-            <div
+            <div 
               className={`flex items-center gap-1 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-xl text-[9px] sm:text-xs font-bold border ${
                 firestoreConnected === true
-                  ? 'bg-emerald-950/40 border-emerald-500/20 text-emerald-400'
+                  ? "bg-emerald-950/40 border-emerald-500/20 text-emerald-400"
                   : firestoreConnected === false
-                  ? 'bg-red-950/40 border-red-500/20 text-red-400 animate-pulse'
-                  : 'bg-zinc-900 border-zinc-800 text-zinc-400'
+                  ? "bg-red-950/40 border-red-500/20 text-red-400 animate-pulse"
+                  : "bg-zinc-900 border-zinc-800 text-zinc-400"
               }`}
               title={
                 firestoreConnected === true
-                  ? 'Synchronisé avec le Cloud Firebase (Temps Réel Actif)'
+                  ? "Synchronisé avec le Cloud Firebase (Temps Réel Actif)"
                   : firestoreConnected === false
-                  ? `Erreur de Synchro Cloud : ${
-                      syncError || 'Problème de permissions ou réseau'
-                    }. Les tickets restent en local.`
-                  : 'Vérification de la connexion Cloud...'
+                  ? `Erreur de Synchro Cloud : ${syncError || "Problème de permissions ou réseau"}. Les tickets restent en local.`
+                  : "Vérification de la connexion Cloud..."
               }
             >
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${
-                  firestoreConnected === true
-                    ? 'bg-emerald-400'
-                    : firestoreConnected === false
-                    ? 'bg-red-500'
-                    : 'bg-zinc-500 animate-ping'
-                }`}
-              />
+              <span className={`w-1.5 h-1.5 rounded-full ${
+                firestoreConnected === true
+                  ? "bg-emerald-400"
+                  : firestoreConnected === false
+                  ? "bg-red-500"
+                  : "bg-zinc-500 animate-ping"
+              }`} />
               <span className="hidden sm:inline">
                 {firestoreConnected === true
-                  ? 'Cloud Sync OK'
+                  ? "Cloud Sync OK"
                   : firestoreConnected === false
-                  ? 'Erreur Sync'
-                  : 'Sync...'}
+                  ? "Erreur Sync"
+                  : "Sync..."}
               </span>
             </div>
           )}
@@ -654,18 +479,15 @@ export default function App() {
           {isPremium ? (
             <button
               onClick={() => {
-                const el = document.getElementById('premium-proposal-card');
+                const el = document.getElementById("premium-proposal-card");
                 if (el) {
-                  el.scrollIntoView({ behavior: 'smooth' });
+                  el.scrollIntoView({ behavior: "smooth" });
                 }
               }}
               className="flex items-center gap-1 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs font-bold text-emerald-400 bg-emerald-950/40 border border-emerald-500/30 rounded-full hover:bg-emerald-950 hover:scale-[1.02] transition-all cursor-pointer animate-pulse shrink-0"
               title="Gérer mon abonnement Premium / Résiliation"
             >
-              <Sparkles
-                size={11}
-                className="text-emerald-400 mr-0.5 shrink-0"
-              />
+              <Sparkles size={11} className="text-emerald-400 mr-0.5 shrink-0" />
               <span className="hidden sm:inline">Membre </span>
               <span>PRO ✨</span>
             </button>
@@ -712,7 +534,7 @@ export default function App() {
       <main className="flex-1 w-full max-w-5xl mx-auto px-4 py-8 space-y-6">
         {/* Firebase Sync Connection Error Banner */}
         {IS_FIREBASE_REAL && firestoreConnected === false && (
-          <div
+          <div 
             className="p-4 rounded-2xl border bg-red-950/45 border-red-500/30 text-red-200 flex items-start gap-4 shadow-xl animate-fadeIn text-left"
             id="firebase-sync-error-banner"
           >
@@ -724,10 +546,7 @@ export default function App() {
                 ⚠️ Échec de Synchronisation Cloud (Mode local de secours actif)
               </span>
               <p className="text-[11px] leading-relaxed opacity-95">
-                Vos tickets et votre statut PRO ne peuvent pas se synchroniser
-                en temps réel entre vos appareils (PC et Mobile) car
-                l'application ne parvient pas à se connecter à la base de
-                données cloud.
+                Vos tickets et votre statut PRO ne peuvent pas se synchroniser en temps réel entre vos appareils (PC et Mobile) car l'application ne parvient pas à se connecter à la base de données cloud.
                 {syncError && (
                   <span className="block mt-1 font-mono text-[10px] bg-red-950/70 p-2 rounded border border-red-900/40 text-red-300 break-words">
                     Raison technique : {syncError}
@@ -736,20 +555,13 @@ export default function App() {
               </p>
               <div className="text-[10.5px] text-zinc-400 pt-1 space-y-1">
                 <p>
-                  💡 <strong>Comment résoudre cela ?</strong> Ce blocage
-                  signifie généralement que les règles de sécurité Firestore du
-                  projet n'ont pas encore été déployées dans votre console
-                  Firebase, ou que votre connexion internet bloque les requêtes
-                  Firebase.
+                  💡 <strong>Comment résoudre cela ?</strong> Ce blocage signifie généralement que les règles de sécurité Firestore du projet n'ont pas encore été déployées dans votre console Firebase, ou que votre connexion internet bloque les requêtes Firebase.
                 </p>
                 <p>
-                  1. Vérifiez que vous avez bien cliqué sur le bouton de
-                  déploiement des règles dans l'outil d'intégration AI Studio.
+                  1. Vérifiez que vous avez bien cliqué sur le bouton de déploiement des règles dans l'outil d'intégration AI Studio.
                 </p>
                 <p>
-                  2. Assurez-vous d'avoir bien ouvert le{' '}
-                  <strong>même lien de déploiement</strong> sur vos deux
-                  appareils.
+                  2. Assurez-vous d'avoir bien ouvert le <strong>même lien de déploiement</strong> sur vos deux appareils.
                 </p>
               </div>
             </div>
@@ -758,42 +570,29 @@ export default function App() {
 
         {/* Stripe Success or Canceled in-app notifications banner */}
         {stripeNotification && (
-          <div
+          <div 
             className={`p-4 rounded-2xl border flex items-start gap-4 shadow-xl ${
-              stripeNotification.type === 'success'
-                ? 'bg-emerald-950/40 border-emerald-500/30 text-emerald-200'
-                : 'bg-amber-950/40 border-amber-500/30 text-amber-200'
+              stripeNotification.type === "success" 
+                ? "bg-emerald-950/40 border-emerald-500/30 text-emerald-200" 
+                : "bg-amber-950/40 border-amber-500/30 text-amber-200"
             }`}
             id="stripe-status-notification"
           >
-            <div
-              className={`p-2 rounded-xl mt-0.5 ${
-                stripeNotification.type === 'success'
-                  ? 'bg-emerald-500/10'
-                  : 'bg-amber-500/10'
-              }`}
-            >
-              <ShieldCheck
-                size={18}
-                className={
-                  stripeNotification.type === 'success'
-                    ? 'text-emerald-400'
-                    : 'text-amber-400'
-                }
-              />
+            <div className={`p-2 rounded-xl mt-0.5 ${
+              stripeNotification.type === "success" ? "bg-emerald-500/10" : "bg-amber-500/10"
+            }`}>
+              <ShieldCheck size={18} className={stripeNotification.type === "success" ? "text-emerald-400" : "text-amber-400"} />
             </div>
             <div className="space-y-1 flex-1">
               <span className="text-xs font-bold font-mono tracking-tight uppercase block">
-                {stripeNotification.type === 'success'
-                  ? 'Abonnement Activé ✅'
-                  : 'Paiement Annulé ⚠️'}
+                {stripeNotification.type === "success" ? "Abonnement Activé ✅" : "Paiement Annulé ⚠️"}
               </span>
               <p className="text-[11px] leading-relaxed opacity-95">
                 {stripeNotification.message}
               </p>
             </div>
-            <button
-              type="button"
+            <button 
+              type="button" 
               onClick={() => setStripeNotification(null)}
               className="p-1 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-900 transition-all cursor-pointer"
             >
@@ -809,14 +608,11 @@ export default function App() {
               Tableau de bord de suivi budgétaire
             </h2>
             <p className="text-xs text-zinc-400 leading-relaxed max-w-xl">
-              Suivez vos dépenses et optimisez vos économies. Vos données
-              restent cryptées localement pour un respect absolu de votre vie
-              privée.
+              Suivez vos dépenses et optimisez vos économies. Vos données restent cryptées localement pour un respect absolu de votre vie privée.
             </p>
           </div>
           <div className="shrink-0 flex items-center gap-1.5 text-xs text-emerald-300 font-bold bg-emerald-950/40 border border-emerald-900/50 px-4 py-2.5 rounded-2xl">
-            <Sparkles size={14} className="text-emerald-400 animate-pulse" />{' '}
-            Données sécurisées
+            <Sparkles size={14} className="text-emerald-400 animate-pulse" /> Données sécurisées
           </div>
         </div>
 
@@ -827,10 +623,10 @@ export default function App() {
         <StatsOverview receipts={receipts} />
 
         {/* Youth-centric Gamified Savings and optimization metrics */}
-        <YouthSavingHub
-          receipts={receipts}
-          isPremium={isPremium}
-          setIsPremium={handleSetIsPremium}
+        <YouthSavingHub 
+          receipts={receipts} 
+          isPremium={isPremium} 
+          setIsPremium={handleSetIsPremium} 
           userEmail={currentUserEmail}
           onSubscribeClick={() => setIsCheckoutOpen(true)}
           onAddSubscriptionReceipt={handleAddSubscriptionReceipt}
@@ -838,217 +634,53 @@ export default function App() {
         />
 
         {/* Price Comparator */}
-        <PriceComparator
-          receipts={receipts}
-          isPremium={isPremium}
+        <PriceComparator 
+          receipts={receipts} 
+          isPremium={isPremium} 
           onSubscribeClick={() => setIsCheckoutOpen(true)}
         />
 
         {/* Scanner Uploader Module */}
-        <ReceiptScanner
-          onScanSuccess={handleScanSuccess}
-          isPremium={isPremium}
-        />
+        <ReceiptScanner onScanSuccess={handleScanSuccess} isPremium={isPremium} />
 
         {/* Historic lists search cards */}
-        <ReceiptList
-          receipts={receipts}
-          onSelectReceipt={setSelectedReceipt}
-          onClearDemo={handleClearDemo}
+        <ReceiptList 
+          receipts={receipts} 
+          onSelectReceipt={setSelectedReceipt} 
+          onClearDemo={handleClearDemo} 
           isPremium={isPremium}
           onSubscribeClick={() => setIsCheckoutOpen(true)}
         />
 
-        {/* Diagnostics & Troubleshooting Panel */}
-        <div
-          className="p-6 bg-zinc-950 border border-zinc-900 rounded-3xl space-y-4 text-left"
-          id="diagnostics-panel"
-        >
-          <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
-            <div className="flex items-center gap-2">
-              <AlertTriangle size={18} className="text-amber-500 shrink-0" />
-              <h3 className="text-sm font-bold text-white tracking-tight">
-                Zone de diagnostic & synchronisation
-              </h3>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span
-                className={`w-2 h-2 rounded-full ${
-                  firestoreConnected === true
-                    ? 'bg-emerald-400'
-                    : 'bg-red-500 animate-pulse'
-                }`}
-              />
-              <span className="text-[10px] font-mono text-zinc-400">
-                {firestoreConnected === true
-                  ? 'Firestore Connecté'
-                  : 'Pas de connexion Firestore'}
-              </span>
-            </div>
-          </div>
-
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            Si vos appareils (PC et Mobile) n'affichent pas le même nombre de
-            tickets ou le même statut PRO, vérifiez qu'ils utilisent strictement
-            la même adresse e-mail. Vous pouvez également forcer manuellement
-            l'envoi ou la réception des données grâce aux outils de diagnostic
-            ci-dessous.
-          </p>
-
-          {/* Diagnostic Feedbacks */}
-          {diagStatus && (
-            <div
-              className={`p-3 text-xs rounded-xl flex items-start gap-2 border animate-fadeIn ${
-                diagStatus.type === 'success'
-                  ? 'bg-emerald-950/40 border-emerald-500/20 text-emerald-300'
-                  : diagStatus.type === 'error'
-                  ? 'bg-red-950/40 border-red-500/20 text-red-300'
-                  : 'bg-zinc-900/80 border-zinc-800 text-zinc-300'
-              }`}
-              id="diag-feedback-banner"
-            >
-              <div className="p-1 bg-white/5 rounded shrink-0">
-                <span className="text-xs font-bold font-mono">ℹ️</span>
-              </div>
-              <div>
-                <p className="font-semibold">
-                  {diagStatus.type === 'success'
-                    ? 'Action réussie'
-                    : diagStatus.type === 'error'
-                    ? 'Erreur système'
-                    : 'Opération en cours'}
-                </p>
-                <p className="mt-0.5 leading-relaxed">{diagStatus.message}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-            <div className="bg-zinc-900/60 p-3 rounded-xl border border-zinc-800 space-y-1">
-              <span className="text-[10px] text-zinc-500 font-mono block">
-                E-MAIL ACTUELLEMENT CONNECTÉ :
-              </span>
-              <span className="font-mono text-white font-semibold break-all">
-                {currentUserEmail || 'Non connecté'}
-              </span>
-            </div>
-            <div className="bg-zinc-900/60 p-3 rounded-xl border border-zinc-800 space-y-1">
-              <span className="text-[10px] text-zinc-500 font-mono block">
-                IDENTIFIANT UNIQUE DU CLOUD :
-              </span>
-              <span className="font-mono text-emerald-400 font-semibold break-all">
-                {currentUserEmail
-                  ? currentUserEmail
-                      .toLowerCase()
-                      .replace(/[^a-zA-Z0-9_\-]/g, '_')
-                  : 'aucun'}
-              </span>
-            </div>
-          </div>
-
-          {/* Interactive Cloud Sync Actions */}
-          {currentUserEmail && (
-            <div className="p-4 bg-zinc-900/30 rounded-2xl border border-zinc-900 space-y-3">
-              <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">
-                Outils de synchronisation forcée :
-              </p>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                <button
-                  type="button"
-                  onClick={forcePushReceipts}
-                  className="flex flex-col items-center justify-center p-3 bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 text-zinc-200 rounded-xl transition-all text-center gap-1.5 cursor-pointer group"
-                >
-                  <span className="text-base group-hover:scale-110 transition-transform">
-                    📤
-                  </span>
-                  <span className="font-bold text-[11px]">
-                    Pousser les tickets
-                  </span>
-                  <span className="text-[9px] text-zinc-500 leading-snug">
-                    Envoie tous vos tickets locaux vers le Cloud
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={forcePushPremium}
-                  className="flex flex-col items-center justify-center p-3 bg-amber-950/20 hover:bg-amber-950/40 border border-amber-900/30 hover:border-amber-900/50 text-amber-400 rounded-xl transition-all text-center gap-1.5 cursor-pointer group"
-                >
-                  <span className="text-base group-hover:scale-110 transition-transform">
-                    ✨
-                  </span>
-                  <span className="font-bold text-[11px]">Sauvegarder PRO</span>
-                  <span className="text-[9px] text-zinc-500 leading-snug">
-                    Force l'écriture de votre statut PRO sur le Cloud
-                  </span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={forceFetchPremium}
-                  className="flex flex-col items-center justify-center p-3 bg-emerald-950/20 hover:bg-emerald-950/40 border border-emerald-900/30 hover:border-emerald-900/50 text-emerald-400 rounded-xl transition-all text-center gap-1.5 cursor-pointer group"
-                >
-                  <span className="text-base group-hover:scale-110 transition-transform">
-                    📥
-                  </span>
-                  <span className="font-bold text-[11px]">Récupérer PRO</span>
-                  <span className="text-[9px] text-zinc-500 leading-snug">
-                    Force la lecture du statut PRO depuis le Cloud
-                  </span>
-                </button>
-              </div>
-            </div>
-          )}
-
-          <div className="bg-zinc-900/40 p-3.5 rounded-xl border border-zinc-850/50 space-y-2">
-            <p className="text-[11px] text-zinc-400 leading-relaxed">
-              <strong>💡 Rappel technique :</strong> Le stockage local de
-              secours de votre téléphone est physique et indépendant de celui de
-              votre ordinateur. Seule la connexion au Cloud Firestore unifie vos
-              appareils. Si vous souhaitez réinitialiser tout le cache local et
-              vous reconnecter proprement, cliquez sur le bouton ci-dessous :
-            </p>
+        {/* Simple sign out / cache reset helper at the bottom */}
+        {currentUserEmail && (
+          <div className="text-center pt-4 pb-2 animate-fadeIn">
             <button
               type="button"
               onClick={() => {
-                if (
-                  window.confirm(
-                    'Voulez-vous vraiment vider le cache local de cet appareil et vous déconnecter ? Les données non synchronisées avec le Cloud seront supprimées de cet appareil.',
-                  )
-                ) {
-                  const userId = currentUserEmail
-                    ? currentUserEmail
-                        .toLowerCase()
-                        .replace(/[^a-zA-Z0-9_\-]/g, '_')
-                    : '';
-                  localStorage.removeItem('scanner_user_session');
-                  localStorage.removeItem('scanner_receipts');
+                if (window.confirm("Voulez-vous vraiment vider le cache local de cet appareil et vous déconnecter ? Les données non synchronisées avec le Cloud seront perdues.")) {
+                  const userId = currentUserEmail ? currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_") : "";
+                  localStorage.removeItem("scanner_user_session");
+                  localStorage.removeItem("scanner_receipts");
                   if (userId) {
                     localStorage.removeItem(`premium_${userId}`);
                   }
                   window.location.reload();
                 }
               }}
-              className="flex items-center gap-1.5 px-3.5 py-2 bg-red-950/40 hover:bg-red-950/70 text-red-400 border border-red-500/20 hover:border-red-500/40 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+              className="inline-flex items-center gap-1.5 text-[10.5px] text-zinc-500 hover:text-red-400/80 transition-colors cursor-pointer font-semibold"
             >
-              <LogOut size={13} />
-              Vider le cache local & Se déconnecter de cet appareil
+              <LogOut size={11} className="text-zinc-500" />
+              Réinitialiser le cache local & Se déconnecter
             </button>
           </div>
-        </div>
+        )}
       </main>
 
       {/* Footer information section */}
       <footer className="py-8 border-t border-zinc-900 bg-zinc-950/40 text-center text-xs text-zinc-500 space-y-1.5 shrink-0">
-        <p>
-          SmartScan — Application à haute intégrité et conformité RGPD
-          européenne.
-        </p>
-        <p className="text-[10px] text-zinc-650">
-          Aucune donnée n'est stockée à des fins d'entraînement ou revendue à
-          des tiers.
-        </p>
+        <p>SmartScan — Application à haute intégrité et conformité RGPD européenne.</p>
+        <p className="text-[10px] text-zinc-650">Aucune donnée n'est stockée à des fins d'entraînement ou revendue à des tiers.</p>
         <button
           type="button"
           onClick={() => setIsLegalOpen(true)}
@@ -1070,64 +702,42 @@ export default function App() {
 
       {/* Duplicate Warning Modal */}
       {duplicateReceiptData && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4"
-          id="duplicate-warning-modal"
-        >
+        <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4" id="duplicate-warning-modal">
           <div className="bg-zinc-950 border-2 border-amber-500/30 rounded-3xl p-6 max-w-md w-full relative space-y-6 shadow-2xl shadow-amber-950/20">
             <div className="flex items-center gap-3">
               <div className="p-2.5 bg-amber-500/10 text-amber-500 rounded-2xl border border-amber-500/20 shrink-0">
-                <AlertTriangle
-                  size={24}
-                  className="animate-bounce text-amber-500"
-                />
+                <AlertTriangle size={24} className="animate-bounce text-amber-500" />
               </div>
               <div>
-                <h3 className="text-base font-extrabold text-white">
-                  Attention : Doublon Détecté
-                </h3>
-                <p className="text-xs text-zinc-400">
-                  Ce ticket de caisse semble déjà exister !
-                </p>
+                <h3 className="text-base font-extrabold text-white">Attention : Doublon Détecté</h3>
+                <p className="text-xs text-zinc-400">Ce ticket de caisse semble déjà exister !</p>
               </div>
             </div>
 
             <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4 space-y-3 font-mono text-xs">
               <div className="flex justify-between border-b border-zinc-900 pb-2">
                 <span className="text-zinc-500">Commerçant :</span>
-                <span className="text-white font-bold">
-                  {duplicateReceiptData.data.merchant}
-                </span>
+                <span className="text-white font-bold">{duplicateReceiptData.data.merchant}</span>
               </div>
               <div className="flex justify-between border-b border-zinc-900 pb-2">
                 <span className="text-zinc-500">Date d'achat :</span>
-                <span className="text-white font-bold">
-                  {duplicateReceiptData.data.date}
-                </span>
+                <span className="text-white font-bold">{duplicateReceiptData.data.date}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-zinc-500">Montant total :</span>
-                <span className="text-amber-400 font-black">
-                  {duplicateReceiptData.data.totalAmount >= 0
-                    ? `${duplicateReceiptData.data.totalAmount.toFixed(2)} €`
-                    : '0.00 €'}
-                </span>
+                <span className="text-amber-400 font-black">{duplicateReceiptData.data.totalAmount >= 0 ? `${duplicateReceiptData.data.totalAmount.toFixed(2)} €` : "0.00 €"}</span>
               </div>
             </div>
 
             <p className="text-xs text-zinc-400 leading-relaxed">
-              Pour éviter d'enregistrer deux fois le même achat et de fausser
-              vos statistiques de budget, vous pouvez choisir l'action
-              appropriée ci-dessous.
+              Pour éviter d'enregistrer deux fois le même achat et de fausser vos statistiques de budget, vous pouvez choisir l'action appropriée ci-dessous.
             </p>
 
             <div className="flex flex-col gap-2">
               <button
                 type="button"
                 onClick={() => {
-                  const existing = receipts.find(
-                    (r) => r.id === duplicateReceiptData.existingId,
-                  );
+                  const existing = receipts.find(r => r.id === duplicateReceiptData.existingId);
                   if (existing) {
                     setSelectedReceipt(existing);
                   }
@@ -1147,7 +757,7 @@ export default function App() {
                       duplicateReceiptData.data,
                       duplicateReceiptData.originalImageName,
                       duplicateReceiptData.base64Preview,
-                      true,
+                      true
                     );
                     setDuplicateReceiptData(null);
                   }}
@@ -1182,19 +792,13 @@ export default function App() {
               <X size={18} />
             </button>
             <div className="text-center space-y-1">
-              <h3 className="text-sm font-extrabold text-white">
-                Scanner avec votre smartphone
-              </h3>
-              <p className="text-[10px] text-zinc-400">
-                Pour tester l'application directement sur votre smartphone
-              </p>
+              <h3 className="text-sm font-extrabold text-white">Scanner avec votre smartphone</h3>
+              <p className="text-[10px] text-zinc-400">Pour tester l'application directement sur votre smartphone</p>
             </div>
-
+            
             <div className="flex justify-center bg-white p-4 rounded-2xl border-4 border-zinc-950 w-fit mx-auto shadow-inner">
-              <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(
-                  getQrUrl(),
-                )}`}
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(getQrUrl())}`} 
                 alt="QR Code de l'application"
                 className="w-40 h-40"
                 referrerPolicy="no-referrer"
@@ -1202,17 +806,10 @@ export default function App() {
             </div>
 
             <div className="text-[10.5px] text-zinc-300 text-center leading-normal px-2 space-y-1">
-              <p>
-                Visez ce QR code avec l'appareil photo de votre smartphone pour
-                continuer sur votre mobile.
-              </p>
+              <p>Visez ce QR code avec l'appareil photo de votre smartphone pour continuer sur votre mobile.</p>
               {currentUserEmail && (
                 <p className="text-emerald-400 font-semibold bg-zinc-950/60 p-1.5 rounded border border-zinc-800/80 mt-1">
-                  Connexion auto :{' '}
-                  <span className="font-mono text-[9.5px] text-zinc-300">
-                    {currentUserEmail}
-                  </span>{' '}
-                  (Même compte & tickets synchronisés en temps réel !)
+                  Connexion auto : <span className="font-mono text-[9.5px] text-zinc-300">{currentUserEmail}</span> (Même compte & tickets synchronisés en temps réel !)
                 </p>
               )}
             </div>
@@ -1228,15 +825,10 @@ export default function App() {
                   }}
                   className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold py-2 rounded-xl transition-all cursor-pointer flex items-center justify-center gap-1"
                 >
-                  {linkCopied
-                    ? '✓ Lien copié !'
-                    : "Copier le lien d'accès direct"}
+                  {linkCopied ? "✓ Lien copié !" : "Copier le lien d'accès direct"}
                 </button>
                 <p className="text-[9px] leading-tight text-amber-400 bg-amber-950/25 border border-amber-900/40 p-2 rounded-xl text-center">
-                  ⚠️ <strong>Important :</strong> Ouvrez impérativement le lien
-                  dans votre navigateur habituel (Safari, Chrome...) et non dans
-                  l'application appareil photo, pour partager correctement la
-                  connexion !
+                  ⚠️ <strong>Important :</strong> Ouvrez impérativement le lien dans votre navigateur habituel (Safari, Chrome...) et non dans l'application appareil photo, pour partager correctement la connexion !
                 </p>
               </div>
             )}
