@@ -4,6 +4,7 @@ import { GoogleGenAI, Type } from "@google/genai";
 import fs from "fs";
 import path from "path";
 import Stripe from "stripe";
+import firebaseConfig from "../firebase-applet-config.json";
 
 dotenv.config();
 
@@ -61,22 +62,10 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 // Initialize Firebase / Firestore parameters for lightweight REST OTP storage (essential for Vercel stateless Serverless environments)
-let firebaseProjectId = "";
-let firebaseApiKey = "";
+const firebaseProjectId = firebaseConfig.projectId || "";
+const firebaseApiKey = firebaseConfig.apiKey || "";
 
-try {
-  const configPath = path.join(process.cwd(), "firebase-applet-config.json");
-  if (fs.existsSync(configPath)) {
-    const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf-8"));
-    firebaseProjectId = firebaseConfig.projectId || "";
-    firebaseApiKey = firebaseConfig.apiKey || "";
-    console.log("[SmartReceipt] Firebase REST configuration loaded successfully. Project ID:", firebaseProjectId);
-  } else {
-    console.warn("[SmartReceipt] firebase-applet-config.json not found, falling back to local memory storage only.");
-  }
-} catch (fbErr) {
-  console.error("[SmartReceipt] Failed to load firebase config:", fbErr);
-}
+console.log("[SmartReceipt] Firebase REST configuration loaded from static bundle. Project ID:", firebaseProjectId);
 
 // In-Memory fallback registry for local mock operations
 const fallbackOtpStorage = new Map<string, { code: string; expiresAt: number }>();
@@ -498,34 +487,30 @@ function getStripe(): Stripe {
 // REST helper to toggle isPremium status inside standard Firestore REST database
 async function setPremiumStatusRest(userId: string, isPremium: boolean): Promise<void> {
   if (!firebaseProjectId) {
-    console.warn("[Stripe Webhook] Aucun projet Firebase configuré pour la mise à jour REST Premium.");
-    return;
+    throw new Error("Aucun projet Firebase configuré pour la mise à jour REST Premium.");
   }
   const emailKey = userId.toLowerCase().trim();
-  try {
-    // Write field using PATCH with updateMask
-    const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(emailKey)}?updateMask.fieldPaths=isPremium&key=${firebaseApiKey}`;
-    const response = await fetch(url, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${emailKey}`,
-        fields: {
-          isPremium: { booleanValue: isPremium }
-        }
-      })
-    });
+  // Write field using PATCH with updateMask
+  const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(emailKey)}?updateMask.fieldPaths=isPremium&key=${firebaseApiKey}`;
+  const response = await fetch(url, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${emailKey}`,
+      fields: {
+        isPremium: { booleanValue: isPremium }
+      }
+    })
+  });
 
-    if (response.ok) {
-      console.log(`[Stripe Webhook] Firestore Premium activé avec succès pour ${emailKey} (${isPremium})`);
-    } else {
-      const errText = await response.text();
-      console.warn(`[Stripe Webhook] Erreur Firestore REST:`, errText);
-    }
-  } catch (err) {
-    console.error("[Stripe Webhook] Exception lors de la mise à jour Firestore REST Premium :", err);
+  if (response.ok) {
+    console.log(`[Stripe Webhook] Firestore Premium activé avec succès pour ${emailKey} (${isPremium})`);
+  } else {
+    const errText = await response.text();
+    console.warn(`[Stripe Webhook] Erreur Firestore REST:`, errText);
+    throw new Error(`Erreur d'écriture Firestore: ${errText}`);
   }
 }
 
@@ -845,8 +830,10 @@ app.post("/api/users/:userId/receipts", async (req, res) => {
       res.status(400).json({ success: false, error: "No Firebase configured" });
       return;
     }
-    const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}/receipts/${receipt.id}?key=${firebaseApiKey}`;
+    const cleanUserId = userId.toLowerCase().trim();
+    const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${receipt.id}?key=${firebaseApiKey}`;
     const body = {
+      name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${receipt.id}`,
       fields: formatReceiptToRestFields(receipt)
     };
 
@@ -860,6 +847,7 @@ app.post("/api/users/:userId/receipts", async (req, res) => {
       res.json({ success: true });
     } else {
       const errText = await response.text();
+      console.warn("[Save Receipt REST Error]:", errText);
       res.status(response.status).json({ success: false, error: errText });
     }
   } catch (err: any) {
@@ -900,8 +888,9 @@ app.post("/api/users/:userId/receipts/bulk-sync", async (req, res) => {
       return;
     }
     
+    const cleanUserId = userId.toLowerCase().trim();
     // Get current cloud receipts
-    const cloudUrl = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}/receipts?key=${firebaseApiKey}`;
+    const cloudUrl = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts?key=${firebaseApiKey}`;
     const cloudResponse = await fetch(cloudUrl);
     let cloudReceipts: any[] = [];
     if (cloudResponse.ok) {
@@ -918,16 +907,22 @@ app.post("/api/users/:userId/receipts/bulk-sync", async (req, res) => {
     // Upload missing ones
     for (const local of receipts) {
       if (!cloudIds.has(local.id)) {
-        const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(userId)}/receipts/${local.id}?key=${firebaseApiKey}`;
+        const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${local.id}?key=${firebaseApiKey}`;
         const body = {
+          name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${local.id}`,
           fields: formatReceiptToRestFields(local)
         };
-        await fetch(url, {
+        const patchRes = await fetch(url, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
-        cloudReceipts.push(local);
+        if (!patchRes.ok) {
+          const patchErr = await patchRes.text();
+          console.warn(`[Bulk Sync PATCH Error] for ${local.id}:`, patchErr);
+        } else {
+          cloudReceipts.push(local);
+        }
       }
     }
     
