@@ -4,8 +4,12 @@ import { GoogleGenAI, Type } from "@google/genai";
 import fs from "fs";
 import path from "path";
 import Stripe from "stripe";
+import { fileURLToPath } from "url";
 
 dotenv.config();
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = reportExpressSetup();
 
@@ -94,11 +98,27 @@ console.log("[SmartReceipt] Firebase REST configuration loaded. Project ID:", fi
 // In-Memory fallback registry for local mock operations
 const fallbackOtpStorage = new Map<string, { code: string; expiresAt: number }>();
 
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2500): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
+  }
+}
+
 async function saveOTP(emailKey: string, code: string, expiresAt: number) {
   if (firebaseProjectId) {
     try {
       const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
-      const response = await fetch(url, {
+      const response = await fetchWithTimeout(url, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json"
@@ -128,7 +148,7 @@ async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: numb
   if (firebaseProjectId) {
     try {
       const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
-      const response = await fetch(url);
+      const response = await fetchWithTimeout(url);
       if (response.status === 404) {
         return null;
       }
@@ -163,7 +183,7 @@ async function removeOTP(emailKey: string) {
   if (firebaseProjectId) {
     try {
       const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
-      await fetch(url, {
+      await fetchWithTimeout(url, {
         method: "DELETE"
       });
       console.log(`[SmartReceipt] Deleted OTP for ${emailKey} from Firestore REST.`);
@@ -218,13 +238,11 @@ app.post(["/api/auth/otp/send", "/auth/otp/send"], async (req, res) => {
       return;
     }
 
-    // Try to send real email with Resend via lightweight direct HTTP request with a 4-second timeout
+    // Try to send real email with Resend via lightweight direct HTTP request with a 3-second timeout
     console.log("[SmartReceipt DEBUG] Tentative d'envoi d'un vrai email via l'API Resend...");
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000);
 
     try {
-      const sendResponse = await fetch("https://api.resend.com/emails", {
+      const sendResponse = await fetchWithTimeout("https://api.resend.com/emails", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
@@ -251,11 +269,8 @@ app.post(["/api/auth/otp/send", "/auth/otp/send"], async (req, res) => {
               </p>
             </div>
           `
-        }),
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
+        })
+      }, 3000);
 
       const sendResult = await sendResponse.json() as any;
       console.log("[SmartReceipt DEBUG] Résultat retourné par Resend API :", sendResult);
@@ -267,7 +282,6 @@ app.post(["/api/auth/otp/send", "/auth/otp/send"], async (req, res) => {
       console.log(`[SmartReceipt] Code envoyé par vrai e-mail Resend à ${emailKey}`);
       res.json({ success: true, isSimulated: false });
     } catch (fetchErr: any) {
-      clearTimeout(timeoutId);
       throw fetchErr;
     }
 
@@ -928,24 +942,37 @@ app.post("/api/users/:userId/receipts/bulk-sync", async (req, res) => {
     
     const cloudIds = new Set(cloudReceipts.map(r => r.id));
     
-    // Upload missing ones
-    for (const local of receipts) {
-      if (!cloudIds.has(local.id)) {
+    // Upload missing ones in parallel for ultra-fast response times (<300ms)
+    const missingReceipts = receipts.filter((r: any) => r && r.id && !cloudIds.has(r.id));
+    if (missingReceipts.length > 0) {
+      const uploadPromises = missingReceipts.map(async (local: any) => {
         const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${local.id}?key=${firebaseApiKey}`;
         const body = {
           name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${local.id}`,
           fields: formatReceiptToRestFields(local)
         };
-        const patchRes = await fetch(url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        });
-        if (!patchRes.ok) {
-          const patchErr = await patchRes.text();
-          console.warn(`[Bulk Sync PATCH Error] for ${local.id}:`, patchErr);
-        } else {
-          cloudReceipts.push(local);
+        try {
+          const patchRes = await fetch(url, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          });
+          if (patchRes.ok) {
+            return local;
+          } else {
+            const patchErr = await patchRes.text();
+            console.warn(`[Bulk Sync PATCH Error] for ${local.id}:`, patchErr);
+          }
+        } catch (err) {
+          console.warn(`[Bulk Sync Fetch Error] for ${local.id}:`, err);
+        }
+        return null;
+      });
+
+      const uploaded = await Promise.all(uploadPromises);
+      for (const item of uploaded) {
+        if (item) {
+          cloudReceipts.push(item);
         }
       }
     }
