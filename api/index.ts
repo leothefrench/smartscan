@@ -98,7 +98,7 @@ console.log("[SmartReceipt] Firebase REST configuration loaded. Project ID:", fi
 // In-Memory fallback registry for local mock operations
 const fallbackOtpStorage = new Map<string, { code: string; expiresAt: number }>();
 
-async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 2500): Promise<Response> {
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs = 8000): Promise<Response> {
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -115,6 +115,9 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 }
 
 async function saveOTP(emailKey: string, code: string, expiresAt: number) {
+  // Always save in-memory first for ultra-fast, zero-lag verification on the same container
+  fallbackOtpStorage.set(emailKey, { code, expiresAt });
+
   if (firebaseProjectId) {
     try {
       const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
@@ -132,7 +135,6 @@ async function saveOTP(emailKey: string, code: string, expiresAt: number) {
       });
       if (response.ok) {
         console.log(`[SmartReceipt] Saved OTP for ${emailKey} in Firestore REST.`);
-        return;
       } else {
         const errorText = await response.text();
         console.warn("[SmartReceipt] Firestore REST write response error:", errorText);
@@ -141,17 +143,20 @@ async function saveOTP(emailKey: string, code: string, expiresAt: number) {
       console.warn("[SmartReceipt] Failed to write OTP to Firestore REST, falling back to local memory:", dbErr);
     }
   }
-  fallbackOtpStorage.set(emailKey, { code, expiresAt });
 }
 
 async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: number } | null> {
+  // Check local memory first for instant 0ms latency and to completely bypass Firestore REST replication or connection lags
+  const local = fallbackOtpStorage.get(emailKey);
+  if (local && Date.now() < local.expiresAt) {
+    console.log(`[SmartReceipt] Retrieved active OTP for ${emailKey} from local memory.`);
+    return local;
+  }
+
   if (firebaseProjectId) {
     try {
       const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
       const response = await fetchWithTimeout(url);
-      if (response.status === 404) {
-        return null;
-      }
       if (response.ok) {
         const data = await response.json() as any;
         const code = data.fields?.code?.stringValue;
@@ -166,9 +171,12 @@ async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: numb
         }
         
         if (code && expiresAt) {
-          return { code, expiresAt };
+          const cloudOTP = { code, expiresAt };
+          // Sync to local map to speed up any immediate subsequent verifications
+          fallbackOtpStorage.set(emailKey, cloudOTP);
+          return cloudOTP;
         }
-      } else {
+      } else if (response.status !== 404) {
         const errorText = await response.text();
         console.warn("[SmartReceipt] Firestore REST read response error:", errorText);
       }
@@ -176,7 +184,7 @@ async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: numb
       console.warn("[SmartReceipt] Failed to read OTP from Firestore REST, trying local memory:", dbErr);
     }
   }
-  return fallbackOtpStorage.get(emailKey) || null;
+  return local || null;
 }
 
 async function removeOTP(emailKey: string) {
@@ -528,8 +536,8 @@ async function setPremiumStatusRest(userId: string, isPremium: boolean): Promise
     throw new Error("Aucun projet Firebase configuré pour la mise à jour REST Premium.");
   }
   const emailKey = userId.toLowerCase().trim();
-  // Write field using PATCH with updateMask
-  const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(emailKey)}?updateMask.fieldPaths=isPremium&key=${firebaseApiKey}`;
+  // Write field using PATCH without updateMask to guarantee document creation if it doesn't exist
+  const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
   const response = await fetch(url, {
     method: "PATCH",
     headers: {
