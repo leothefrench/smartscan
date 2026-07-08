@@ -175,7 +175,7 @@ export default function App() {
 
   // Sync receipts and premium status dynamically across all open devices using real-time listeners
   useEffect(() => {
-    if (!IS_FIREBASE_REAL || !db) {
+    if (!IS_FIREBASE_REAL) {
       setFirestoreConnected(false);
       setSyncError("Configuration Firebase manquante ou invalide.");
       return;
@@ -189,81 +189,88 @@ export default function App() {
 
     const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
 
-    // Perform initial fast HTTP Sync instantly on load
+    // Perform initial fast HTTP Sync instantly on load (supported even if client SDK fails)
     triggerFastHttpSync(false);
 
-    // Set up standard 4-second poll as a super-robust sync backup across devices
+    // Set up standard 4-second poll as a super-robust sync backup across devices (always allowed)
     const pollInterval = setInterval(() => {
       triggerFastHttpSync(true);
     }, 4000);
 
-    // 1. Subscribe to real-time premium status updates
-    const unsubPremium = onSnapshot(doc(db, "users", userId), (docSnap) => {
-      setFirestoreConnected(true);
-      setSyncError(null);
-      if (docSnap.exists()) {
-        const status = !!docSnap.data()?.isPremium;
-        setIsPremium(status);
-        localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
-      } else {
-        // Document has not been created in Firestore yet.
-        // If this device holds active local Premium status, save it to the cloud so all other devices can fetch it!
-        const localPremium = localStorage.getItem(`premium_${userId}`) === "true";
-        if (localPremium) {
-          saveUserPremiumStatus(userId, true).catch(err => console.warn(err));
+    let unsubPremium = () => {};
+    let unsubReceipts = () => {};
+
+    if (db) {
+      // 1. Subscribe to real-time premium status updates
+      unsubPremium = onSnapshot(doc(db, "users", userId), (docSnap) => {
+        setFirestoreConnected(true);
+        setSyncError(null);
+        if (docSnap.exists()) {
+          const status = !!docSnap.data()?.isPremium;
+          setIsPremium(status);
+          localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
         } else {
-          setIsPremium(false);
+          // Document has not been created in Firestore yet.
+          // If this device holds active local Premium status, save it to the cloud so all other devices can fetch it!
+          const localPremium = localStorage.getItem(`premium_${userId}`) === "true";
+          if (localPremium) {
+            saveUserPremiumStatus(userId, true).catch(err => console.warn(err));
+          } else {
+            setIsPremium(false);
+          }
         }
-      }
-    }, (err) => {
-      console.warn("Erreur d'écoute premium temps réel (utilisation du canal REST de secours) :", err);
-      // Do not flash red if our fast REST sync succeeded!
-    });
-
-    // 2. Subscribe to real-time receipts updates with auto-merging of local-only receipts
-    const unsubReceipts = onSnapshot(collection(db, "users", userId, "receipts"), (qSnapshot) => {
-      setFirestoreConnected(true);
-      setSyncError(null);
-      
-      const cloudList: Receipt[] = [];
-      qSnapshot.forEach((docSnap) => {
-        const item = docSnap.data() as Receipt;
-        cloudList.push({ ...item, synced: true }); // Always mark cloud fetched receipts as synced
-      });
-      cloudList.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
-
-      // Read current local receipts
-      const stored = localStorage.getItem("scanner_receipts");
-      const localList: Receipt[] = stored ? JSON.parse(stored) : [];
-      
-      // Merge local-only receipts that haven't been successfully synced to the cloud yet.
-      // This eliminates race conditions during real-time updates and guarantees newly scanned/created tickets are never lost.
-      const cloudIds = new Set(cloudList.map(r => r.id));
-      const finalReceipts = [...cloudList];
-
-      localList.forEach((local) => {
-        if (!cloudIds.has(local.id) && !local.synced) {
-          finalReceipts.push(local);
-          // Sync it to cloud asynchronously
-          saveUserReceiptToCloud(userId, local).catch((err) => 
-            console.warn("Erreur de sauvegarde locale vers cloud :", err)
-          );
-        }
+      }, (err) => {
+        console.warn("Erreur d'écoute premium temps réel (utilisation du canal REST de secours) :", err);
+        // Do not flash red if our fast REST sync succeeded!
       });
 
-      finalReceipts.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+      // 2. Subscribe to real-time receipts updates with auto-merging of local-only receipts
+      unsubReceipts = onSnapshot(collection(db, "users", userId, "receipts"), (qSnapshot) => {
+        setFirestoreConnected(true);
+        setSyncError(null);
+        
+        const cloudList: Receipt[] = [];
+        qSnapshot.forEach((docSnap) => {
+          const item = docSnap.data() as Receipt;
+          cloudList.push({ ...item, synced: true }); // Always mark cloud fetched receipts as synced
+        });
+        cloudList.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
 
-      setReceipts(finalReceipts);
-      localStorage.setItem("scanner_receipts", JSON.stringify(finalReceipts));
-    }, (err) => {
-      console.warn("Erreur d'écoute receipts temps réel (utilisation du canal REST de secours) :", err);
-      // Do not flash red if our fast REST sync succeeded!
-    });
+        // Read current local receipts
+        const stored = localStorage.getItem("scanner_receipts");
+        const localList: Receipt[] = stored ? JSON.parse(stored) : [];
+        
+        // Merge local-only receipts that haven't been successfully synced to the cloud yet.
+        // This eliminates race conditions during real-time updates and guarantees newly scanned/created tickets are never lost.
+        const cloudIds = new Set(cloudList.map(r => r.id));
+        const finalReceipts = [...cloudList];
+
+        localList.forEach((local) => {
+          if (!cloudIds.has(local.id) && !local.synced) {
+            finalReceipts.push(local);
+            // Sync it to cloud asynchronously
+            saveUserReceiptToCloud(userId, local).catch((err) => 
+              console.warn("Erreur de sauvegarde locale vers cloud :", err)
+            );
+          }
+        });
+
+        finalReceipts.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+
+        setReceipts(finalReceipts);
+        localStorage.setItem("scanner_receipts", JSON.stringify(finalReceipts));
+      }, (err) => {
+        console.warn("Erreur d'écoute receipts temps réel (utilisation du canal REST de secours) :", err);
+        // Do not flash red if our fast REST sync succeeded!
+      });
+    }
 
     return () => {
       clearInterval(pollInterval);
-      unsubPremium();
-      unsubReceipts();
+      if (db) {
+        unsubPremium();
+        unsubReceipts();
+      }
     };
   }, [currentUserEmail]);
 

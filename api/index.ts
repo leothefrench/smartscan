@@ -153,8 +153,14 @@ async function saveOTP(emailKey: string, code: string, expiresAt: number) {
 async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: number } | null> {
   if (firebaseProjectId) {
     try {
-      const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
-      const response = await fetchWithTimeout(url, {}, 3000);
+      const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}&_nocache=${Date.now()}`;
+      const response = await fetchWithTimeout(url, {
+        headers: {
+          "Cache-Control": "no-cache, no-store, must-revalidate",
+          "Pragma": "no-cache",
+          "Expires": "0"
+        }
+      }, 3000);
       if (response.ok) {
         const data = await response.json() as any;
         const code = data.fields?.code?.stringValue;
@@ -169,6 +175,11 @@ async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: numb
         }
         
         if (code && expiresAt) {
+          if (Date.now() > expiresAt) {
+            console.log(`[SmartReceipt] getOTP found expired OTP for ${emailKey} in Firestore. Clearing it.`);
+            removeOTP(emailKey).catch(err => console.warn(err));
+            return null;
+          }
           const cloudOTP = { code, expiresAt };
           // Sync to local map to speed up any immediate subsequent verifications
           fallbackOtpStorage.set(emailKey, cloudOTP);
@@ -189,7 +200,11 @@ async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: numb
 
   // Fallback to local memory if Firestore is down, offline, or not configured
   const local = fallbackOtpStorage.get(emailKey);
-  if (local && Date.now() < local.expiresAt) {
+  if (local) {
+    if (Date.now() > local.expiresAt) {
+      fallbackOtpStorage.delete(emailKey);
+      return null;
+    }
     console.log(`[SmartReceipt] Retrieved active OTP for ${emailKey} from local memory.`);
     return local;
   }
