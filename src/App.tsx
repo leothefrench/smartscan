@@ -44,6 +44,40 @@ export default function App() {
   const [firestoreConnected, setFirestoreConnected] = useState<boolean | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
 
+  // Define triggerFastHttpSync at component-level so we can call it anywhere!
+  const triggerFastHttpSync = async (silent = false) => {
+    if (!currentUserEmail || !IS_FIREBASE_REAL) return;
+    const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
+    try {
+      if (!silent) {
+        setFirestoreConnected(null);
+      }
+      
+      // 1. Fetch Premium status via API
+      const status = await fetchUserPremiumStatus(userId);
+      setIsPremium(status);
+      localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
+
+      // 2. Fetch receipts and perform bulk-sync via API
+      const stored = localStorage.getItem("scanner_receipts");
+      const localList: Receipt[] = stored ? JSON.parse(stored) : [];
+      const synced = await syncLocalReceiptsToCloud(userId, localList);
+      
+      // Mark all receipts returned from API bulk sync as synced
+      const markedSynced = synced.map(r => ({ ...r, synced: true }));
+      setReceipts(markedSynced);
+      localStorage.setItem("scanner_receipts", JSON.stringify(markedSynced));
+
+      setFirestoreConnected(true);
+      setSyncError(null);
+    } catch (err: any) {
+      console.warn("[SmartReceipt REST Sync Warning] Échec de la synchronisation REST:", err);
+      if (!silent) {
+        setSyncError(err?.message || String(err));
+      }
+    }
+  };
+
   const handleSetIsPremium = async (status: boolean) => {
     setIsPremium(status);
     if (currentUserEmail) {
@@ -52,6 +86,7 @@ export default function App() {
       if (IS_FIREBASE_REAL) {
         try {
           await saveUserPremiumStatus(userId, status);
+          triggerFastHttpSync(true); // Trigger fast sync immediately!
         } catch (e) {
           console.warn("Could not save premium status to Firestore:", e);
         }
@@ -154,36 +189,13 @@ export default function App() {
 
     const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
 
-    // NEW: Fast HTTP Sync to ensure immediate feedback in <100ms
-    const triggerFastHttpSync = async () => {
-      try {
-        setFirestoreConnected(null); // Silent amber loading indicator while connecting
-        
-        // 1. Fetch Premium status via API
-        const status = await fetchUserPremiumStatus(userId);
-        setIsPremium(status);
-        localStorage.setItem(`premium_${userId}`, status ? "true" : "false");
+    // Perform initial fast HTTP Sync instantly on load
+    triggerFastHttpSync(false);
 
-        // 2. Fetch receipts and perform bulk-sync via API
-        const stored = localStorage.getItem("scanner_receipts");
-        const localList = stored ? JSON.parse(stored) : [];
-        const synced = await syncLocalReceiptsToCloud(userId, localList);
-        
-        // Mark all receipts returned from API bulk sync as synced
-        const markedSynced = synced.map(r => ({ ...r, synced: true }));
-        setReceipts(markedSynced);
-        localStorage.setItem("scanner_receipts", JSON.stringify(markedSynced));
-
-        // Mark as connected/synced successfully!
-        setFirestoreConnected(true);
-        setSyncError(null);
-        console.log("[SmartReceipt REST] Synchronisation initiale ultra-rapide réussie.");
-      } catch (err: any) {
-        console.warn("[SmartReceipt REST Sync Warning] Échec de la synchronisation REST initiale, le SDK d'arrière-plan prend le relais:", err);
-      }
-    };
-
-    triggerFastHttpSync();
+    // Set up standard 4-second poll as a super-robust sync backup across devices
+    const pollInterval = setInterval(() => {
+      triggerFastHttpSync(true);
+    }, 4000);
 
     // 1. Subscribe to real-time premium status updates
     const unsubPremium = onSnapshot(doc(db, "users", userId), (docSnap) => {
@@ -249,6 +261,7 @@ export default function App() {
     });
 
     return () => {
+      clearInterval(pollInterval);
       unsubPremium();
       unsubReceipts();
     };
@@ -327,7 +340,9 @@ export default function App() {
 
     if (IS_FIREBASE_REAL && currentUserEmail) {
       const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
-      saveUserReceiptToCloud(userId, finalReceipt).catch((err) => {
+      saveUserReceiptToCloud(userId, finalReceipt).then(() => {
+        triggerFastHttpSync(true); // Sync immediately after saving
+      }).catch((err) => {
         console.error("Erreur d'écriture sur le Cloud :", err);
       });
     }
@@ -354,6 +369,7 @@ export default function App() {
       const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
       try {
         await saveUserReceiptToCloud(userId, formattedUpdated);
+        triggerFastHttpSync(true); // Sync immediately after editing
       } catch (err) {
         console.error("Erreur d'édition du document Cloud :", err);
       }
@@ -370,6 +386,7 @@ export default function App() {
       const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
       try {
         await deleteUserReceiptFromCloud(userId, id);
+        triggerFastHttpSync(true); // Sync immediately after deletion
       } catch (err) {
         console.error("Erreur de suppression du document Cloud :", err);
       }
@@ -410,7 +427,9 @@ export default function App() {
 
     if (IS_FIREBASE_REAL && currentUserEmail) {
       const userId = currentUserEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, "_");
-      saveUserReceiptToCloud(userId, newReceipt).catch((err) => {
+      saveUserReceiptToCloud(userId, newReceipt).then(() => {
+        triggerFastHttpSync(true); // Sync immediately after saving
+      }).catch((err) => {
         console.error("Erreur d'écriture sur le Cloud :", err);
       });
     }
