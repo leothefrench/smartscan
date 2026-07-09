@@ -16,8 +16,45 @@ export default function StripeCheckoutModal({
 }: StripeCheckoutModalProps) {
   const [errorMsg, setErrorMsg] = useState('');
   const [realStripeLoading, setRealStripeLoading] = useState(false);
+  const [isSimulatedLoading, setIsSimulatedLoading] = useState(false);
   const [hasAcknowledgedWithdrawal, setHasAcknowledgedWithdrawal] =
     useState(false);
+
+  const isLocalOrSandbox =
+    typeof window !== 'undefined' &&
+    (window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1' ||
+      window.location.hostname.includes('192.168.') ||
+      window.location.hostname.includes('run.app'));
+
+  const handleSimulatePayment = async () => {
+    if (!userEmail) {
+      setErrorMsg("Veuillez vous connecter pour simuler l'abonnement.");
+      return;
+    }
+    setIsSimulatedLoading(true);
+    setErrorMsg('');
+    try {
+      const userId = userEmail.toLowerCase().replace(/[^a-zA-Z0-9_\-]/g, '_');
+      const res = await fetch(`/api/users/${userId}/premium`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isPremium: true }),
+      });
+      if (res.ok) {
+        localStorage.setItem(`premium_${userId}`, 'true');
+        onSuccess();
+        onClose();
+      } else {
+        throw new Error("L'API de simulation de mise à jour premium a échoué.");
+      }
+    } catch (err: any) {
+      console.error(err);
+      setErrorMsg(`Échec de la simulation : ${err.message || err}`);
+    } finally {
+      setIsSimulatedLoading(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -211,8 +248,12 @@ export default function StripeCheckoutModal({
               <button
                 type="button"
                 onClick={handleRealStripeRedirect}
-                disabled={realStripeLoading || !hasAcknowledgedWithdrawal}
-                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
+                disabled={
+                  realStripeLoading ||
+                  isSimulatedLoading ||
+                  !hasAcknowledgedWithdrawal
+                }
+                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
               >
                 {realStripeLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-zinc-950" />
@@ -227,6 +268,35 @@ export default function StripeCheckoutModal({
                 Redirection 100% sécurisée vers Stripe pour finaliser votre
                 abonnement (compatible Cartes Bancaires, Google Pay, Apple Pay).
               </p>
+
+              {/* Developer Sandbox Simulation tool */}
+              {isLocalOrSandbox && (
+                <div className="mt-4 p-3.5 bg-indigo-950/30 border border-indigo-900/50 rounded-2xl space-y-2 animate-fadeIn text-left">
+                  <div className="text-[10.5px] font-bold text-indigo-300 flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-ping" />
+                    Mode Développeur / Sandbox Détecté :
+                  </div>
+                  <p className="text-[10px] text-zinc-400 leading-normal">
+                    Puisque vous exécutez l'application en local ou dans un
+                    environnement de test (où les webhooks Stripe ne peuvent pas
+                    atteindre votre serveur), vous pouvez simuler l'activation
+                    instantanée de votre abonnement Premium PRO sans carte
+                    bancaire :
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSimulatePayment}
+                    disabled={realStripeLoading || isSimulatedLoading}
+                    className="w-full mt-1 bg-indigo-650 hover:bg-indigo-600 disabled:opacity-40 text-white font-extrabold py-2 px-3 rounded-xl shadow transition-all text-[10.5px] flex items-center justify-center gap-1.5 cursor-pointer"
+                  >
+                    {isSimulatedLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <span>✨ Simuler le statut Premium PRO</span>
+                    )}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="text-[9px] text-zinc-600 text-center leading-normal">

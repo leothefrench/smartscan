@@ -151,6 +151,18 @@ async function saveOTP(emailKey: string, code: string, expiresAt: number) {
 }
 
 async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: number } | null> {
+  // 1. Check local memory first to bypass network latency and Firestore eventual consistency
+  const local = fallbackOtpStorage.get(emailKey);
+  if (local) {
+    if (Date.now() < local.expiresAt) {
+      console.log(`[SmartReceipt] Retrieved active OTP for ${emailKey} from local memory.`);
+      return local;
+    } else {
+      fallbackOtpStorage.delete(emailKey);
+    }
+  }
+
+  // 2. Fallback to Firestore if not in local memory (e.g., after server restart or different server instance)
   if (firebaseProjectId) {
     try {
       const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/otps/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}&_nocache=${Date.now()}`;
@@ -198,16 +210,6 @@ async function getOTP(emailKey: string): Promise<{ code: string; expiresAt: numb
     }
   }
 
-  // Fallback to local memory if Firestore is down, offline, or not configured
-  const local = fallbackOtpStorage.get(emailKey);
-  if (local) {
-    if (Date.now() > local.expiresAt) {
-      fallbackOtpStorage.delete(emailKey);
-      return null;
-    }
-    console.log(`[SmartReceipt] Retrieved active OTP for ${emailKey} from local memory.`);
-    return local;
-  }
   return null;
 }
 
