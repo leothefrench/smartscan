@@ -435,7 +435,8 @@ Pour chaque article réellement répertorié sur l'image :
 - Nettoie son nom de tout code barre, abréviation mystérieuse ou préfixe inutile. Ex: "BAGUETTE TRAD 1.20" -> "Baguette de tradition".
 - Assigne-lui une des catégories suivantes : "Alimentation", "Loisirs & Culture", "Santé & Hygiène", "Mode & Habillement", "Électronique & Maison", "Transport & Carburant", "Services & Factures", "Autre".`;
 
-    const response = await ai.models.generateContent({
+    // Wrap Gemini API call with a 25-second maximum timeout to avoid hanging indefinitely on slow or restricted networks
+    const geminiPromise = ai.models.generateContent({
       model: "gemini-3.5-flash",
       contents: [
         {
@@ -511,6 +512,14 @@ Pour chaque article réellement répertorié sur l'image :
         }
       }
     });
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Délai d'attente dépassé (25s) : L'analyse d'image par Google Gemini n'a pas répondu à temps. Veuillez vérifier votre connexion réseau locale ou réessayer avec une image plus lumineuse."));
+      }, 25000);
+    });
+
+    const response = await Promise.race([geminiPromise, timeoutPromise]);
 
     const text = response.text || "{}";
     const data = JSON.parse(text);
@@ -679,7 +688,7 @@ app.post(["/api/stripe/create-checkout-session", "/stripe/create-checkout-sessio
   }
 });
 
-// 2. Stripe Webhook: Handle payments and triggers from Stripe (with and without Stripe Webhook verification key to ease sandbox preview debugging)
+// 2. Stripe Webhook: Handle payments and triggers from Stripe
 app.post(
   ["/api/stripe/webhook", "/stripe/webhook", "/api/webhooks/stripe", "/webhooks/stripe"],
   express.raw({ type: "application/json" }),
@@ -1046,49 +1055,58 @@ app.post("/api/users/:userId/receipts/bulk-sync", async (req, res) => {
     
     // Upload missing ones in parallel for ultra-fast response times (<300ms)
     const missingReceipts = receipts.filter((r: any) => r && r.id && !cloudIds.has(r.id));
+    
     if (missingReceipts.length > 0) {
-      const uploadPromises = missingReceipts.map(async (local: any) => {
-        const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${local.id}?key=${firebaseApiKey}`;
+      console.log(`[SmartReceipt REST Bulk-Sync] Sauvegarde en tâche de fond de ${missingReceipts.length} tickets manquants sur Firestore...`);
+      
+      const uploadPromises = missingReceipts.map(async (receipt: any) => {
+        const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${receipt.id}?key=${firebaseApiKey}`;
         const body = {
-          name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${local.id}`,
-          fields: formatReceiptToRestFields(local)
+          name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${receipt.id}`,
+          fields: formatReceiptToRestFields(receipt)
         };
-        try {
-          const patchRes = await fetchWithTimeout(url, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)
-          }, 3000);
-          if (patchRes.ok) {
-            return local;
-          } else {
-            const patchErr = await patchRes.text();
-            console.warn(`[Bulk Sync PATCH Error] for ${local.id}:`, patchErr);
-          }
-        } catch (err) {
-          console.warn(`[Bulk Sync Fetch Error] for ${local.id}:`, err);
-        }
-        return null;
+        return fetchWithTimeout(url, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        }, 3000).catch(e => console.warn(`[Bulk-Sync Failed for ${receipt.id}]:`, e));
       });
+      
+      await Promise.all(uploadPromises);
+    }
 
-      const uploaded = await Promise.all(uploadPromises);
-      for (const item of uploaded) {
-        if (item) {
-          cloudReceipts.push(item);
-        }
+    // Return the unified full updated list to sync client state in 1 network roundtrip
+    const unified = [...cloudReceipts];
+    const unifiedIds = new Set(unified.map(r => r.id));
+    for (const localR of receipts) {
+      if (localR && localR.id && !unifiedIds.has(localR.id)) {
+        unified.push(localR);
       }
     }
     
-    cloudReceipts.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+    // Sort reverse chronological
+    unified.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
     
-    // Save in cache
-    receiptsCache.set(cleanUserId, { receipts: cloudReceipts, expiresAt: Date.now() + CACHE_TTL_MS });
+    // Update cache
+    receiptsCache.set(cleanUserId, { receipts: unified, expiresAt: Date.now() + CACHE_TTL_MS });
 
-    res.json({ success: true, receipts: cloudReceipts });
+    res.json({ success: true, receipts: unified });
   } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error("[Bulk-Sync error]:", err);
+    res.status(500).json({ success: false, error: err.message, receipts });
   }
 });
 
-export { app };
-export default app;
+// For production static assets hosting
+const distPath = path.join(process.cwd(), "dist");
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(distPath, "index.html"));
+  });
+}
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[SmartReceipt] Serveur démarré en écoute sur le port ${PORT}`);
+});

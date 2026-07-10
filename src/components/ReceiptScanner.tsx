@@ -78,9 +78,9 @@ export default function ReceiptScanner({
 
   const compressImageClientSide = (
     file: File,
-    maxWidth = 1600,
-    maxHeight = 1600,
-    quality = 0.82,
+    maxWidth = 1024,
+    maxHeight = 1024,
+    quality = 0.7,
   ): Promise<{ base64Data: string; fullBase64: string; mimeType: string }> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -598,7 +598,7 @@ export default function ReceiptScanner({
             {/* Commerçant ou lieu */}
             <div className="space-y-1.5">
               <label className="text-xs text-zinc-300 font-semibold flex items-center gap-1">
-                <Store size={13} className="text-zinc-500" /> Lieu ou Enseigne
+                <Store size={13} className="text-zinc-505" /> Lieu ou Enseigne
               </label>
               <input
                 type="text"
