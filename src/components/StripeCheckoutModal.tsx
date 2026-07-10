@@ -253,7 +253,7 @@ export default function StripeCheckoutModal({
                   isSimulatedLoading ||
                   !hasAcknowledgedWithdrawal
                 }
-                className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
+                className="w-full bg-linear-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:from-zinc-805 disabled:to-zinc-805 disabled:opacity-40 disabled:cursor-not-allowed text-zinc-950 font-extrabold py-3.5 px-4 rounded-xl shadow-lg shadow-amber-950/20 active:scale-[0.98] transition-all text-xs flex items-center justify-center gap-2 cursor-pointer border border-amber-400/20"
               >
                 {realStripeLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin text-zinc-950" />
