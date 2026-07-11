@@ -688,10 +688,28 @@ app.post(["/api/stripe/create-checkout-session", "/stripe/create-checkout-sessio
   }
 });
 
-// 2. Stripe Webhook: Handle payments and triggers from Stripe
+// Helper to read raw body securely and robustly from request stream
+async function readRawBody(req: express.Request): Promise<Buffer> {
+  if (req.body instanceof Buffer) {
+    return req.body;
+  }
+  if (typeof req.body === "string") {
+    return Buffer.from(req.body, "utf8");
+  }
+  if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
+    return Buffer.from(JSON.stringify(req.body), "utf8");
+  }
+  return new Promise<Buffer>((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    req.on("end", () => resolve(Buffer.concat(chunks)));
+    req.on("error", (err) => reject(err));
+  });
+}
+
+// 2. Stripe Webhook: Handle payments and triggers from Stripe (with and without Stripe Webhook verification key to ease sandbox preview debugging)
 app.post(
   ["/api/stripe/webhook", "/stripe/webhook", "/api/webhooks/stripe", "/webhooks/stripe"],
-  express.raw({ type: "application/json" }),
   async (req, res) => {
     const stripeSignature = req.headers["stripe-signature"] as string;
     const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -699,15 +717,16 @@ app.post(
     let stripeEvent: any;
 
     try {
+      const rawPayload = await readRawBody(req);
       const stripe = getStripe();
       if (webhookSecret && stripeSignature) {
         // High security mode: verify Stripe's cryptographically signed raw headers
-        stripeEvent = stripe.webhooks.constructEvent(req.body, stripeSignature, webhookSecret);
+        stripeEvent = stripe.webhooks.constructEvent(rawPayload, stripeSignature, webhookSecret);
         console.log(`[Stripe Webhook] Webhook vérifié avec succès. Événement : ${stripeEvent.type}`);
       } else {
-        // High compatibility sandbox fallback: parse req.body manually
-        const rawPayload = req.body instanceof Buffer ? req.body.toString("utf8") : JSON.stringify(req.body);
-        stripeEvent = JSON.parse(rawPayload);
+        // High compatibility sandbox fallback: parse raw body manually
+        const payloadStr = rawPayload.toString("utf8");
+        stripeEvent = JSON.parse(payloadStr || "{}");
         console.log(`[Stripe Webhook Warning] Exécution sans clé de validation de signature. Événement : ${stripeEvent?.type}`);
       }
     } catch (err: any) {
@@ -1055,58 +1074,49 @@ app.post("/api/users/:userId/receipts/bulk-sync", async (req, res) => {
     
     // Upload missing ones in parallel for ultra-fast response times (<300ms)
     const missingReceipts = receipts.filter((r: any) => r && r.id && !cloudIds.has(r.id));
-    
     if (missingReceipts.length > 0) {
-      console.log(`[SmartReceipt REST Bulk-Sync] Sauvegarde en tâche de fond de ${missingReceipts.length} tickets manquants sur Firestore...`);
-      
-      const uploadPromises = missingReceipts.map(async (receipt: any) => {
-        const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${receipt.id}?key=${firebaseApiKey}`;
+      const uploadPromises = missingReceipts.map(async (local: any) => {
+        const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${local.id}?key=${firebaseApiKey}`;
         const body = {
-          name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${receipt.id}`,
-          fields: formatReceiptToRestFields(receipt)
+          name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${local.id}`,
+          fields: formatReceiptToRestFields(local)
         };
-        return fetchWithTimeout(url, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body)
-        }, 3000).catch(e => console.warn(`[Bulk-Sync Failed for ${receipt.id}]:`, e));
+        try {
+          const patchRes = await fetchWithTimeout(url, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          }, 3000);
+          if (patchRes.ok) {
+            return local;
+          } else {
+            const patchErr = await patchRes.text();
+            console.warn(`[Bulk Sync PATCH Error] for ${local.id}:`, patchErr);
+          }
+        } catch (err) {
+          console.warn(`[Bulk Sync Fetch Error] for ${local.id}:`, err);
+        }
+        return null;
       });
-      
-      await Promise.all(uploadPromises);
-    }
 
-    // Return the unified full updated list to sync client state in 1 network roundtrip
-    const unified = [...cloudReceipts];
-    const unifiedIds = new Set(unified.map(r => r.id));
-    for (const localR of receipts) {
-      if (localR && localR.id && !unifiedIds.has(localR.id)) {
-        unified.push(localR);
+      const uploaded = await Promise.all(uploadPromises);
+      for (const item of uploaded) {
+        if (item) {
+          cloudReceipts.push(item);
+        }
       }
     }
     
-    // Sort reverse chronological
-    unified.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
+    cloudReceipts.sort((a, b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
     
-    // Update cache
-    receiptsCache.set(cleanUserId, { receipts: unified, expiresAt: Date.now() + CACHE_TTL_MS });
+    // Save in cache
+    receiptsCache.set(cleanUserId, { receipts: cloudReceipts, expiresAt: Date.now() + CACHE_TTL_MS });
 
-    res.json({ success: true, receipts: unified });
+    res.json({ success: true, receipts: cloudReceipts });
   } catch (err: any) {
-    console.error("[Bulk-Sync error]:", err);
-    res.status(500).json({ success: false, error: err.message, receipts });
+    res.status(500).json({ success: false, error: err.message });
   }
 });
 
-// For production static assets hosting
-const distPath = path.join(process.cwd(), "dist");
-if (fs.existsSync(distPath)) {
-  app.use(express.static(distPath));
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
-  });
-}
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(`[SmartReceipt] Serveur démarré en écoute sur le port ${PORT}`);
-});
+export { app };
+export default app;
