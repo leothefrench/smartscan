@@ -586,8 +586,8 @@ async function setPremiumStatusRest(userId: string, isPremium: boolean): Promise
   // Populate cache instantly for subsequent polls to read in <1ms
   premiumCache.set(emailKey, { isPremium, expiresAt: Date.now() + CACHE_TTL_MS });
 
-  // Write field using PATCH without updateMask to guarantee document creation if it doesn't exist
-  const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}`;
+  // Write field using PATCH with updateMask to guarantee standard compatibility on all Firestore databases
+  const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(emailKey)}?key=${firebaseApiKey}&updateMask.fieldPaths=isPremium`;
   const response = await fetch(url, {
     method: "PATCH",
     headers: {
@@ -768,6 +768,28 @@ app.post(
 );
 
 // Helpers for converting receipt formats for REST
+function buildFirestorePatchUrl(baseUrl: string, fields: any): string {
+  try {
+    // If baseUrl is relative or full URL, construct and append updateMask.fieldPaths
+    let fullUrl = baseUrl;
+    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+      fullUrl = "http://localhost" + baseUrl;
+    }
+    const urlObj = new URL(fullUrl);
+    Object.keys(fields).forEach(key => {
+      urlObj.searchParams.append("updateMask.fieldPaths", key);
+    });
+    // If the original input was relative, return only path + search, otherwise return full string
+    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
+      return urlObj.pathname + urlObj.search;
+    }
+    return urlObj.toString();
+  } catch (err) {
+    console.warn("[buildFirestorePatchUrl error]:", err);
+    return baseUrl;
+  }
+}
+
 function formatReceiptToRestFields(receipt: any) {
   const fields: any = {
     id: { stringValue: receipt.id || "" },
@@ -779,7 +801,8 @@ function formatReceiptToRestFields(receipt: any) {
     scannedAt: { stringValue: receipt.scannedAt || "" }
   };
 
-  if (receipt.imageUrl) {
+  // Skip base64 image strings from going into Firestore to avoid 1MB document limit failures!
+  if (receipt.imageUrl && !receipt.imageUrl.startsWith("data:")) {
     fields.imageUrl = { stringValue: receipt.imageUrl };
   }
   if (receipt.rawResponse) {
@@ -984,10 +1007,12 @@ app.post("/api/users/:userId/receipts", async (req, res) => {
       receiptsCache.set(cleanUserId, { receipts: updatedList, expiresAt: Date.now() + CACHE_TTL_MS });
     }
 
-    const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${receipt.id}?key=${firebaseApiKey}`;
+    const rawUrl = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${receipt.id}?key=${firebaseApiKey}`;
+    const restFields = formatReceiptToRestFields(receipt);
+    const url = buildFirestorePatchUrl(rawUrl, restFields);
     const body = {
       name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${receipt.id}`,
-      fields: formatReceiptToRestFields(receipt)
+      fields: restFields
     };
 
     const response = await fetch(url, {
@@ -1076,10 +1101,12 @@ app.post("/api/users/:userId/receipts/bulk-sync", async (req, res) => {
     const missingReceipts = receipts.filter((r: any) => r && r.id && !cloudIds.has(r.id));
     if (missingReceipts.length > 0) {
       const uploadPromises = missingReceipts.map(async (local: any) => {
-        const url = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${local.id}?key=${firebaseApiKey}`;
+        const rawUrl = `https://firestore.googleapis.com/v1/projects/${firebaseProjectId}/databases/(default)/documents/users/${encodeURIComponent(cleanUserId)}/receipts/${local.id}?key=${firebaseApiKey}`;
+        const restFields = formatReceiptToRestFields(local);
+        const url = buildFirestorePatchUrl(rawUrl, restFields);
         const body = {
           name: `projects/${firebaseProjectId}/databases/(default)/documents/users/${cleanUserId}/receipts/${local.id}`,
-          fields: formatReceiptToRestFields(local)
+          fields: restFields
         };
         try {
           const patchRes = await fetchWithTimeout(url, {

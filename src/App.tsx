@@ -84,10 +84,22 @@ export default function App() {
       setIsPremium(status);
       localStorage.setItem(`premium_${userId}`, status ? 'true' : 'false');
 
-      // Mark all receipts returned from API bulk sync as synced
-      const markedSynced = synced.map((r) => ({ ...r, synced: true }));
-      setReceipts(markedSynced);
-      localStorage.setItem('scanner_receipts', JSON.stringify(markedSynced));
+      // Merge local receipts that are not present in the returned synced cloud receipts list
+      const syncedIds = new Set(synced.map((r) => r.id));
+      const finalReceipts = synced.map((r) => ({ ...r, synced: true }));
+
+      localList.forEach((local) => {
+        if (!syncedIds.has(local.id)) {
+          finalReceipts.push({ ...local, synced: false }); // Keep local-only receipts and mark them unsynced
+        }
+      });
+
+      finalReceipts.sort(
+        (a, b) =>
+          new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime(),
+      );
+      setReceipts(finalReceipts);
+      localStorage.setItem('scanner_receipts', JSON.stringify(finalReceipts));
 
       setFirestoreConnected(true);
       setSyncError(null);
@@ -304,10 +316,12 @@ export default function App() {
           const finalReceipts = [...cloudList];
 
           localList.forEach((local) => {
-            if (!cloudIds.has(local.id) && !local.synced) {
-              finalReceipts.push(local);
-              // Sync it to cloud asynchronously
-              saveUserReceiptToCloud(userId, local).catch((err) =>
+            if (!cloudIds.has(local.id)) {
+              // Receipt is local-only (either new or not yet propagated to current user's cloud account).
+              // Mark synced: false so we trigger a safe upload for the newly logged-in account, and append it!
+              const unsyncedLocal = { ...local, synced: false };
+              finalReceipts.push(unsyncedLocal);
+              saveUserReceiptToCloud(userId, unsyncedLocal).catch((err) =>
                 console.warn('Erreur de sauvegarde locale vers cloud :', err),
               );
             }

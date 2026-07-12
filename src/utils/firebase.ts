@@ -182,12 +182,18 @@ export async function saveUserReceiptToCloud(
   userId: string,
   receipt: Receipt,
 ): Promise<void> {
+  // Deep copy and strip base64 images from the cloud payload to stay under 1MB Firestore limit
+  const cleanReceipt = { ...receipt };
+  if (cleanReceipt.imageUrl && cleanReceipt.imageUrl.startsWith('data:')) {
+    delete cleanReceipt.imageUrl;
+  }
+
   // Try calling our ultra-reliable backend REST proxy API first!
   try {
     const res = await fetch(`/api/users/${userId}/receipts`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ receipt }),
+      body: JSON.stringify({ receipt: cleanReceipt }),
     });
     if (res.ok) {
       return;
@@ -202,7 +208,7 @@ export async function saveUserReceiptToCloud(
   if (!IS_FIREBASE_REAL || !db) return;
   const docPath = `users/${userId}/receipts/${receipt.id}`;
   try {
-    await setDoc(doc(db, docPath), receipt);
+    await setDoc(doc(db, docPath), cleanReceipt);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, docPath);
   }
@@ -246,12 +252,21 @@ export async function syncLocalReceiptsToCloud(
   userId: string,
   localReceipts: Receipt[],
 ): Promise<Receipt[]> {
+  // Deep copy and strip base64 image strings from all receipts to stay under 1MB Firestore limit
+  const cleanedReceipts = localReceipts.map((r) => {
+    const clean = { ...r };
+    if (clean.imageUrl && clean.imageUrl.startsWith('data:')) {
+      delete clean.imageUrl;
+    }
+    return clean;
+  });
+
   // Try calling our ultra-reliable backend REST bulk sync API first!
   try {
     const res = await fetch(`/api/users/${userId}/receipts/bulk-sync`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ receipts: localReceipts }),
+      body: JSON.stringify({ receipts: cleanedReceipts }),
     });
     if (res.ok) {
       const data = await res.json();
