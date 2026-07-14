@@ -1,9 +1,9 @@
 {
-  "apiKey": "AIzaSyDC7eEExEyNJASfLPPUQLZENNKl3UjroAA",
-  "authDomain": "smartscan-a408c.firebaseapp.com",
-  "projectId": "smartscan-a408c",
-  "storageBucket": "smartscan-a408c.firebasestorage.app",
-  "messagingSenderId": "647999489103",
-  "appId": "1:647999489103:web:1d46a812380224dfe1d63a",
+  "apiKey": "AIzaSyDQNIGGq6i9G-j1GeOFw-NuUNa6-ixZGuA",
+  "authDomain": "smartscan-prod.firebaseapp.com",
+  "projectId": "smartscan-prod",
+  "storageBucket": "smartscan-prod.firebasestorage.app",
+  "messagingSenderId": "775890888652",
+  "appId": "1:775890888652:web:5b24042835b3bbf8155f69",
   "firestoreDatabaseId": "(default)"
 }
