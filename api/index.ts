@@ -5,7 +5,6 @@ import fs from "fs";
 import path from "path";
 import Stripe from "stripe";
 import { fileURLToPath } from "url";
-import firebaseConfig from "../firebase-applet-config.json";
 
 dotenv.config();
 
@@ -65,11 +64,36 @@ function getGeminiClient(): GoogleGenAI {
   return aiClient;
 }
 
-// Initialize Firebase / Firestore parameters using static import to avoid runtime filesystem read failures on Vercel
-const firebaseProjectId = firebaseConfig.projectId;
-const firebaseApiKey = firebaseConfig.apiKey;
+// Load Firebase configuration dynamically and safely to avoid ESM JSON import syntax errors or bundler issues on Vercel
+let firebaseProjectId = "";
+let firebaseApiKey = "";
 
-console.log("[SmartReceipt] Firebase REST configuration loaded from static JSON. Project ID:", firebaseProjectId);
+try {
+  const rootPath = path.join(process.cwd(), "firebase-applet-config.json");
+  const parentPath = path.join(process.cwd(), "..", "firebase-applet-config.json");
+  const configPath = fs.existsSync(rootPath) ? rootPath : (fs.existsSync(parentPath) ? parentPath : "");
+
+  if (configPath) {
+    const rawConfig = fs.readFileSync(configPath, "utf-8");
+    const parsed = JSON.parse(rawConfig);
+    firebaseProjectId = parsed.projectId || "";
+    firebaseApiKey = parsed.apiKey || "";
+    console.log("[SmartReceipt] Firebase REST configuration loaded safely from JSON file. Project ID:", firebaseProjectId);
+  } else {
+    console.warn("[SmartReceipt] Warning: firebase-applet-config.json not found in", process.cwd());
+  }
+} catch (e: any) {
+  console.error("[SmartReceipt] Failed to load firebase-applet-config.json safely:", e.message);
+}
+
+// Fallback to environment variables if available
+if (!firebaseProjectId && process.env.FIREBASE_PROJECT_ID) {
+  firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
+  console.log("[SmartReceipt] Using Firebase Project ID from environment variable:", firebaseProjectId);
+}
+if (!firebaseApiKey && process.env.FIREBASE_API_KEY) {
+  firebaseApiKey = process.env.FIREBASE_API_KEY;
+}
 
 // In-Memory fallback registry for local mock operations
 const fallbackOtpStorage = new Map<string, { code: string; expiresAt: number }>();
