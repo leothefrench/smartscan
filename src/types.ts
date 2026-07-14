@@ -34,6 +34,7 @@ export interface Receipt {
   rawResponse?: string; // analytical notes or insights about the purchases
   isRecurring?: boolean;
   recurrence?: 'weekly' | 'monthly' | 'yearly';
+  synced?: boolean;
 }
 
 export interface ScanningStats {

@@ -22,7 +22,7 @@ import {
   db
 } from "./utils/firebase";
 import { formatMerchantName } from "./utils/security";
-import { safeLocalStorage } from "./utils/storage";
+import { safeLocalStorage } from "./utils/Storage";
 import { Scan, Sparkles, ShieldCheck, LogOut, User, Smartphone, X, AlertTriangle, Eye, PlusCircle } from "lucide-react";
 
 export default function App() {
@@ -308,13 +308,13 @@ export default function App() {
     setIsPremium(isLocalPremium);
   };
 
-  const handleLogout = () => {
-    setCurrentUserEmail(null);
-    setIsAuthenticated(false);
-    setIsPremium(false);
-    setReceipts([]);
-    safeLocalStorage.removeItem("scanner_user_session");
-  };
+ const handleLogout = () => {
+   setCurrentUserEmail(null);
+   setIsAuthenticated(false);
+   setIsPremium(false);
+   setReceipts([]);
+   safeLocalStorage.removeItem('scanner_user_session');
+ };
 
   // Add new parsed receipt
   const handleScanSuccess = (data: any, originalImageName: string, base64Preview?: string, forceAdd = false) => {
@@ -493,7 +493,7 @@ export default function App() {
           {currentUserEmail && (
             <div className="flex items-center gap-1.5 sm:gap-2 bg-zinc-900/85 px-1.5 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-zinc-800 shadow-md">
               <User size={11} className="text-zinc-400 shrink-0" />
-              <span className="text-[9px] sm:text-xs font-mono text-zinc-300 font-semibold truncate max-w-[70px] sm:max-w-[180px] md:max-w-[280px]" title={currentUserEmail}>
+              <span className="text-[9px] sm:text-xs font-mono text-zinc-300 font-semibold truncate max-w-17.5 sm:max-w-45 md:max-w-70" title={currentUserEmail}>
                 {currentUserEmail}
               </span>
             </div>
@@ -606,7 +606,7 @@ export default function App() {
               <p className="text-[11px] leading-relaxed opacity-95">
                 Vos tickets et votre statut PRO ne peuvent pas se synchroniser en temps réel entre vos appareils (PC et Mobile) car l'application ne parvient pas à se connecter à la base de données cloud.
                 {syncError && (
-                  <span className="block mt-1 font-mono text-[10px] bg-red-950/70 p-2 rounded border border-red-900/40 text-red-300 break-words">
+                  <span className="block mt-1 font-mono text-[10px] bg-red-950/70 p-2 rounded border border-red-900/40 text-red-300 wrap-break-word">
                     Raison technique : {syncError}
                   </span>
                 )}
