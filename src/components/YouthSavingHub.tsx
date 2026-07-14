@@ -832,7 +832,7 @@ export default function YouthSavingHub({
                   <div className="bg-zinc-950/90 border border-emerald-500/30 rounded-xl p-3 text-center flex flex-col items-center justify-center space-y-1.5">
                     <div className="flex items-center gap-1.5 text-emerald-400 text-xs font-bold">
                       <ShieldCheck size={14} />
-                      <span>Mode Premium Actif (Simulé)</span>
+                      <span>Abonnement Premium PRO Actif ✨</span>
                     </div>
                     <button
                       type="button"
