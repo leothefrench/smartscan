@@ -65,8 +65,8 @@ function getGeminiClient(): GoogleGenAI {
 }
 
 // Load Firebase configuration dynamically and safely to avoid ESM JSON import syntax errors or bundler issues on Vercel
-let firebaseProjectId = "";
-let firebaseApiKey = "";
+let firebaseProjectId = "smartscan-prod";
+let firebaseApiKey = "AIzaSyDQNIGGq6i9G-j1GeOFw-NuUNa6-ixZGuA";
 
 try {
   const rootPath = path.join(process.cwd(), "firebase-applet-config.json");
@@ -76,22 +76,21 @@ try {
   if (configPath) {
     const rawConfig = fs.readFileSync(configPath, "utf-8");
     const parsed = JSON.parse(rawConfig);
-    firebaseProjectId = parsed.projectId || "";
-    firebaseApiKey = parsed.apiKey || "";
+    if (parsed.projectId) firebaseProjectId = parsed.projectId;
+    if (parsed.apiKey) firebaseApiKey = parsed.apiKey;
     console.log("[SmartReceipt] Firebase REST configuration loaded safely from JSON file. Project ID:", firebaseProjectId);
   } else {
-    console.warn("[SmartReceipt] Warning: firebase-applet-config.json not found in", process.cwd());
+    console.warn("[SmartReceipt] Warning: firebase-applet-config.json not found in", process.cwd(), "- Falling back to default applet configuration.");
   }
 } catch (e: any) {
   console.error("[SmartReceipt] Failed to load firebase-applet-config.json safely:", e.message);
 }
 
 // Fallback to environment variables if available
-if (!firebaseProjectId && process.env.FIREBASE_PROJECT_ID) {
+if (process.env.FIREBASE_PROJECT_ID) {
   firebaseProjectId = process.env.FIREBASE_PROJECT_ID;
-  console.log("[SmartReceipt] Using Firebase Project ID from environment variable:", firebaseProjectId);
 }
-if (!firebaseApiKey && process.env.FIREBASE_API_KEY) {
+if (process.env.FIREBASE_API_KEY) {
   firebaseApiKey = process.env.FIREBASE_API_KEY;
 }
 
@@ -310,7 +309,7 @@ app.post(["/api/auth/otp/send", "/auth/otp/send"], async (req, res) => {
                 <span style="font-family: SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace; font-size: 32px; font-weight: 800; letter-spacing: 6px; color: #10b981;">${code}</span>
               </div>
               <p style="color: #64748b; font-size: 12px; line-height: 1.5; text-align: center; margin-bottom: 0;">
-                Ce code est strictement unique et confidentiel. Il est valable pendant 10 minutes.<br>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
+                Ce code est strictly unique et confidentiel. Il est valable pendant 10 minutes.<br>Si vous n'êtes pas à l'origine de cette demande, vous pouvez ignorer cet e-mail en toute sécurité.
               </p>
             </div>
           `
@@ -452,51 +451,24 @@ Pour chaque article réellement répertorié sur l'image :
         },
       ],
       config: {
-        temperature: 0,
         responseMimeType: "application/json",
         responseSchema: {
           type: Type.OBJECT,
-          required: ["merchant", "date", "totalAmount", "taxAmount", "currency", "items"],
           properties: {
-            merchant: {
-              type: Type.STRING,
-              description: "Le nom du magasin/commerçant. Exemple: Carrefour, FNAC, Pharmacies Réunies."
-            },
-            date: {
-              type: Type.STRING,
-              description: `La date du ticket au format YYYY-MM-DD. Si absente, extrais l'année/mois puis estime ou utilise la date courante du jour de l'analyse : ${new Date().toISOString().split("T")[0]}.`
-            },
-            totalAmount: {
-              type: Type.NUMBER,
-              description: "Le montant total final payé TTC en nombre flottant."
-            },
-            taxAmount: {
-              type: Type.NUMBER,
-              description: "Le montant de la taxe (TVA) estimé ou extrait. Si introuvable ou si pas mentionné, 0."
-            },
-            currency: {
-              type: Type.STRING,
-              description: "La devise du ticket, par exemple EUR, USD, CAD."
-            },
+            merchant: { type: Type.STRING, description: "Nom exact du magasin" },
+            date: { type: Type.STRING, description: "Date d'achat au format YYYY-MM-DD" },
+            totalAmount: { type: Type.NUMBER, description: "Montant total TTC" },
+            taxAmount: { type: Type.NUMBER, description: "Montant de TVA s'il est spécifié" },
+            currency: { type: Type.STRING, description: "Devise à 3 lettres, ex: EUR" },
             items: {
               type: Type.ARRAY,
-              description: "La liste des articles trouvés sur le ticket.",
+              description: "Liste des articles achetés",
               items: {
                 type: Type.OBJECT,
-                required: ["name", "quantity", "price", "category"],
                 properties: {
-                  name: {
-                    type: Type.STRING,
-                    description: "Nom propre et clair de l'article."
-                  },
-                  quantity: {
-                    type: Type.NUMBER,
-                    description: "Quantité achetée (entier ou flottant). Si non spécifié, défaut 1."
-                  },
-                  price: {
-                    type: Type.NUMBER,
-                    description: "Prix total payé de cet article pour cette quantité."
-                  },
+                  name: { type: Type.STRING, description: "Désignation claire de l'article" },
+                  quantity: { type: Type.INTEGER, description: "Quantité d'achat" },
+                  price: { type: Type.NUMBER, description: "Prix total de cette ligne d'articles" },
                   category: {
                     type: Type.STRING,
                     description: "La catégorie. Doit être strictement une des valeurs: Alimentation, Loisirs & Culture, Santé & Hygiène, Mode & Habillement, Électronique & Maison, Transport & Carburant, Services & Factures, Autre."
@@ -506,7 +478,7 @@ Pour chaque article réellement répertorié sur l'image :
             },
             rawResponse: {
               type: Type.STRING,
-              description: "Une note d'analyse budgétaire courte, lucide et critique en français (15-25 mots). Pas de compliments futiles ou de flatteries. Identifie un conseil d'économie concret ou une alternative fait maison (ex: cuisiner soi-même par rapport à un plat acheté préparé ou traiteur) pour optimiser les dépenses de ce ticket."
+              description: "Une note d'analyse budgétaire courte, lucide et critique en français (15-25 mots). Pas de compliments futiles ou de flatteries. Identifie un conseil d'économie concret ou une alternative fait maison (ex: cuisiner soi-même par rapport à un plat acheté préparé ou traiteur) pour optimiser les d'épenses de ce ticket."
             }
           }
         }
@@ -699,98 +671,106 @@ async function readRawBody(req: express.Request): Promise<Buffer> {
   if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
     return Buffer.from(JSON.stringify(req.body), "utf8");
   }
+  
   return new Promise<Buffer>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    req.on("data", (chunk: Buffer) => chunks.push(chunk));
+    const chunks: any[] = [];
+    req.on("data", (chunk) => chunks.push(chunk));
     req.on("end", () => resolve(Buffer.concat(chunks)));
     req.on("error", (err) => reject(err));
   });
 }
 
-// 2. Stripe Webhook: Handle payments and triggers from Stripe (with and without Stripe Webhook verification key to ease sandbox preview debugging)
-app.post(
-  ["/api/stripe/webhook", "/stripe/webhook", "/api/webhooks/stripe", "/webhooks/stripe"],
-  async (req, res) => {
-    const stripeSignature = req.headers["stripe-signature"] as string;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+// 2. Stripe endpoint: Webhook handler to receive asynchronous events securely
+app.post(["/api/stripe/webhook", "/stripe/webhook", "/webhooks/stripe"], async (req, res) => {
+  const stripe = getStripe();
+  const sig = req.headers["stripe-signature"];
+  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
-    let stripeEvent: any;
+  if (!sig || !webhookSecret) {
+    res.status(400).json({ success: false, error: "Stripe signature headers or Stripe webhook secret are missing in production environment configurations." });
+    return;
+  }
 
-    try {
-      const rawPayload = await readRawBody(req);
-      const stripe = getStripe();
-      if (webhookSecret && stripeSignature) {
-        // High security mode: verify Stripe's cryptographically signed raw headers
-        stripeEvent = stripe.webhooks.constructEvent(rawPayload, stripeSignature, webhookSecret);
-        console.log(`[Stripe Webhook] Webhook vérifié avec succès. Événement : ${stripeEvent.type}`);
-      } else {
-        // High compatibility sandbox fallback: parse raw body manually
-        const payloadStr = rawPayload.toString("utf8");
-        stripeEvent = JSON.parse(payloadStr || "{}");
-        console.log(`[Stripe Webhook Warning] Exécution sans clé de validation de signature. Événement : ${stripeEvent?.type}`);
-      }
-    } catch (err: any) {
-      console.error(`[Stripe Webhook Error] Échec de validation du Webhook :`, err.message);
-      res.status(400).send(`Erreur de Webhook : ${err.message}`);
-      return;
-    }
+  let event: Stripe.Event;
 
-    // Process event types
-    try {
-      if (stripeEvent.type === "checkout.session.completed") {
-        const session = stripeEvent.data.object;
+  try {
+    const rawBody = await readRawBody(req);
+    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+  } catch (err: any) {
+    console.error(`[Stripe Webhook Error] Invalid signature construct validation: ${err.message}`);
+    res.status(400).send(`Webhook Signature Error: ${err.message}`);
+    return;
+  }
+
+  console.log(`[Stripe Webhook] Secure event received: ${event.type} [ID: ${event.id}]`);
+
+  try {
+    switch (event.type) {
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
         const userId = session.metadata?.userId;
         if (userId) {
-          console.log(`[Stripe Webhook] Commande d'abonnement clôturée avec succès. Activation PRO pour : ${userId}`);
+          console.log(`[Stripe Webhook] Checkout Completed! Activating PRO for User: ${userId}`);
           await setPremiumStatusRest(userId, true);
         }
-      } else if (stripeEvent.type === "customer.subscription.deleted" || stripeEvent.type === "customer.subscription.updated") {
-        const subscription = stripeEvent.data.object;
-        const userId = subscription.metadata?.userId;
-        const status = subscription.status;
-        
-        if (userId) {
-          if (status === "canceled" || status === "unpaid" || status === "incomplete_expired") {
-            console.log(`[Stripe Webhook] Statut d'abonnement inactif/résilié (${status}). Désactivation PRO pour : ${userId}`);
-            await setPremiumStatusRest(userId, false);
-          } else if (status === "active") {
-            console.log(`[Stripe Webhook] Statut d'abonnement actif. Réactivation/Maintien PRO pour : ${userId}`);
-            await setPremiumStatusRest(userId, true);
-          }
-        }
+        break;
       }
-    } catch (processErr: any) {
-      console.error(`[Stripe Webhook] Exception lors du traitement de l'événement de webhook :`, processErr);
+      case "customer.subscription.created": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const userId = subscription.metadata?.userId;
+        if (userId) {
+          console.log(`[Stripe Webhook] Subscription created! User: ${userId}`);
+          await setPremiumStatusRest(userId, true);
+        }
+        break;
+      }
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object as Stripe.Subscription;
+        const userId = subscription.metadata?.userId;
+        if (userId) {
+          console.log(`[Stripe Webhook] Subscription canceled! Revoking PRO for User: ${userId}`);
+          await setPremiumStatusRest(userId, false);
+        }
+        break;
+      }
+      default:
+        console.log(`[Stripe Webhook] Unhandled secured event status: ${event.type}`);
     }
-
     res.json({ received: true });
+  } catch (err: any) {
+    console.error(`[Stripe Webhook Execution Crash]`, err);
+    res.status(500).json({ error: `Internal execution webhook processing failure: ${err.message}` });
   }
-);
+});
 
-// Helpers for converting receipt formats for REST
-function buildFirestorePatchUrl(baseUrl: string, fields: any): string {
-  try {
-    // If baseUrl is relative or full URL, construct and append updateMask.fieldPaths
-    let fullUrl = baseUrl;
-    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-      fullUrl = "http://localhost" + baseUrl;
-    }
-    const urlObj = new URL(fullUrl);
-    Object.keys(fields).forEach(key => {
-      urlObj.searchParams.append("updateMask.fieldPaths", key);
-    });
-    // If the original input was relative, return only path + search, otherwise return full string
-    if (!baseUrl.startsWith("http://") && !baseUrl.startsWith("https://")) {
-      return urlObj.pathname + urlObj.search;
-    }
-    return urlObj.toString();
-  } catch (err) {
-    console.warn("[buildFirestorePatchUrl error]:", err);
-    return baseUrl;
+function buildFirestorePatchUrl(rawUrl: string, restFields: any): string {
+  const queryParams = new URLSearchParams();
+  queryParams.set("updateMask.fieldPaths", "id");
+  queryParams.append("updateMask.fieldPaths", "merchant");
+  queryParams.append("updateMask.fieldPaths", "date");
+  queryParams.append("updateMask.fieldPaths", "totalAmount");
+  queryParams.append("updateMask.fieldPaths", "taxAmount");
+  queryParams.append("updateMask.fieldPaths", "currency");
+  queryParams.append("updateMask.fieldPaths", "scannedAt");
+  queryParams.append("updateMask.fieldPaths", "items");
+
+  if (restFields.imageUrl) {
+    queryParams.append("updateMask.fieldPaths", "imageUrl");
   }
+  if (restFields.rawResponse) {
+    queryParams.append("updateMask.fieldPaths", "rawResponse");
+  }
+  if (restFields.isRecurring) {
+    queryParams.append("updateMask.fieldPaths", "isRecurring");
+  }
+  if (restFields.recurrence) {
+    queryParams.append("updateMask.fieldPaths", "recurrence");
+  }
+
+  return `${rawUrl}&${queryParams.toString()}`;
 }
 
-function formatReceiptToRestFields(receipt: any) {
+function formatReceiptToRestFields(receipt: any): any {
   const fields: any = {
     id: { stringValue: receipt.id || "" },
     merchant: { stringValue: receipt.merchant || "" },
