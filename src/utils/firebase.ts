@@ -1,30 +1,25 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import {
-  getAuth,
-  signInWithCustomToken,
-  User,
-  signInAnonymously,
-} from 'firebase/auth';
-import {
-  getFirestore,
+import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, signInWithCustomToken, User, signInAnonymously } from "firebase/auth";
+import { 
+  getFirestore, 
   initializeFirestore,
-  doc,
-  setDoc,
-  getDoc,
-  getDocs,
-  collection,
-  deleteDoc,
-  query,
-  getDocFromServer,
-} from 'firebase/firestore';
-import firebaseConfig from '../firebase-applet-config.json';
-import { Receipt } from '../types';
+  doc, 
+  setDoc, 
+  getDoc, 
+  getDocs, 
+  collection, 
+  deleteDoc, 
+  query, 
+  getDocFromServer 
+} from "firebase/firestore";
+import firebaseConfig from "../firebase-applet-config.json";
+import { Receipt } from "../types";
 
 // Check if configuration is realistic
-export const IS_FIREBASE_REAL =
-  firebaseConfig &&
-  firebaseConfig.apiKey &&
-  firebaseConfig.apiKey !== 'PLACEHOLDER_KEY';
+export const IS_FIREBASE_REAL = 
+  firebaseConfig && 
+  firebaseConfig.apiKey && 
+  firebaseConfig.apiKey !== "PLACEHOLDER_KEY";
 
 let app;
 let authInstance: any = null;
@@ -39,24 +34,15 @@ if (IS_FIREBASE_REAL) {
         experimentalForceLongPolling: true,
       });
     } catch (e) {
-      dbInstance = getFirestore(
-        app,
-        firebaseConfig.firestoreDatabaseId || '(default)',
-      );
+      dbInstance = getFirestore(app, firebaseConfig.firestoreDatabaseId || "(default)");
     }
     authInstance = getAuth(app);
     // Silent anonymous auth in background to populate request.auth for secure Firestore writes
     signInAnonymously(authInstance).catch((err) => {
-      console.warn(
-        'Silent anonymous sign-in failed or anonymous provider is not enabled in Firebase console yet:',
-        err,
-      );
+      console.warn("Silent anonymous sign-in failed or anonymous provider is not enabled in Firebase console yet:", err);
     });
   } catch (error) {
-    console.warn(
-      "Erreur d'initialisation de Firebase, repli sur le stockage local :",
-      error,
-    );
+    console.warn("Erreur d'initialisation de Firebase, repli sur le stockage local :", error);
   }
 }
 
@@ -65,12 +51,12 @@ export const db = dbInstance;
 
 // Required error reporting structures as per high-integrity standards
 export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
+  CREATE = "create",
+  UPDATE = "update",
+  DELETE = "delete",
+  LIST = "list",
+  GET = "get",
+  WRITE = "write",
 }
 
 export interface FirestoreErrorInfo {
@@ -87,33 +73,28 @@ export interface FirestoreErrorInfo {
       providerId?: string | null;
       email?: string | null;
     }[];
-  };
+  }
 }
 
-export function handleFirestoreError(
-  error: unknown,
-  operationType: OperationType,
-  path: string | null,
-) {
+export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const currentAuth = auth;
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
     authInfo: {
-      userId: currentAuth?.currentUser?.uid || 'NO_USER',
-      email: currentAuth?.currentUser?.email || 'NO_EMAIL',
+      userId: currentAuth?.currentUser?.uid || "NO_USER",
+      email: currentAuth?.currentUser?.email || "NO_EMAIL",
       emailVerified: currentAuth?.currentUser?.emailVerified || false,
       isAnonymous: currentAuth?.currentUser?.isAnonymous || false,
       tenantId: currentAuth?.currentUser?.tenantId || null,
-      providerInfo:
-        currentAuth?.currentUser?.providerData?.map((provider) => ({
-          providerId: provider.providerId,
-          email: provider.email,
-        })) || [],
+      providerInfo: currentAuth?.currentUser?.providerData?.map(provider => ({
+        providerId: provider.providerId,
+        email: provider.email,
+      })) || []
     },
     operationType,
-    path,
+    path
   };
-  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  console.error("Firestore Error: ", JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
 
@@ -124,13 +105,11 @@ export async function validateFirestoreConnection(): Promise<boolean> {
   if (!IS_FIREBASE_REAL || !db) return false;
   try {
     // Check if the client is connected
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    await getDocFromServer(doc(db, "test", "connection"));
     return true;
   } catch (error: any) {
-    if (error?.message?.includes('the client is offline')) {
-      console.error(
-        'Please check your Firebase configuration or network connectivity.',
-      );
+    if (error?.message?.includes("the client is offline")) {
+      console.error("Please check your Firebase configuration or network connectivity.");
     }
     return false;
   }
@@ -143,17 +122,15 @@ export async function fetchUserReceipts(userId: string): Promise<Receipt[]> {
   // Try calling our ultra-reliable backend REST proxy API first!
   try {
     const res = await fetch(`/api/users/${userId}/receipts`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && Array.isArray(data.receipts)) {
-        return data.receipts;
-      }
+    if (!res.ok) {
+      throw new Error(`API returned non-OK status: ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.success && Array.isArray(data.receipts)) {
+      return data.receipts;
     }
   } catch (apiErr) {
-    console.warn(
-      'API fetch receipts failed, trying client SDK fallback:',
-      apiErr,
-    );
+    console.warn("API fetch receipts failed, trying client SDK fallback:", apiErr);
   }
 
   if (!IS_FIREBASE_REAL || !db) return [];
@@ -165,10 +142,7 @@ export async function fetchUserReceipts(userId: string): Promise<Receipt[]> {
       items.push(docSnap.data() as Receipt);
     });
     // Sort by scanned date descending
-    return items.sort(
-      (a, b) =>
-        new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime(),
-    );
+    return items.sort((a,b) => new Date(b.scannedAt).getTime() - new Date(a.scannedAt).getTime());
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, colPath);
     return [];
@@ -178,31 +152,26 @@ export async function fetchUserReceipts(userId: string): Promise<Receipt[]> {
 /**
  * Sync helper: Save single receipt to Firestore
  */
-export async function saveUserReceiptToCloud(
-  userId: string,
-  receipt: Receipt,
-): Promise<void> {
+export async function saveUserReceiptToCloud(userId: string, receipt: Receipt): Promise<void> {
   // Deep copy and strip base64 images from the cloud payload to stay under 1MB Firestore limit
   const cleanReceipt = { ...receipt };
-  if (cleanReceipt.imageUrl && cleanReceipt.imageUrl.startsWith('data:')) {
+  if (cleanReceipt.imageUrl && cleanReceipt.imageUrl.startsWith("data:")) {
     delete cleanReceipt.imageUrl;
   }
 
   // Try calling our ultra-reliable backend REST proxy API first!
   try {
     const res = await fetch(`/api/users/${userId}/receipts`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ receipt: cleanReceipt }),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receipt: cleanReceipt })
     });
-    if (res.ok) {
-      return;
+    if (!res.ok) {
+      throw new Error(`API returned non-OK status: ${res.status}`);
     }
+    return;
   } catch (apiErr) {
-    console.warn(
-      'API save receipt failed, trying client SDK fallback:',
-      apiErr,
-    );
+    console.warn("API save receipt failed, trying client SDK fallback:", apiErr);
   }
 
   if (!IS_FIREBASE_REAL || !db) return;
@@ -217,23 +186,18 @@ export async function saveUserReceiptToCloud(
 /**
  * Sync helper: Delete single receipt from Firestore
  */
-export async function deleteUserReceiptFromCloud(
-  userId: string,
-  receiptId: string,
-): Promise<void> {
+export async function deleteUserReceiptFromCloud(userId: string, receiptId: string): Promise<void> {
   // Try calling our ultra-reliable backend REST proxy API first!
   try {
     const res = await fetch(`/api/users/${userId}/receipts/${receiptId}`, {
-      method: 'DELETE',
+      method: "DELETE"
     });
-    if (res.ok) {
-      return;
+    if (!res.ok) {
+      throw new Error(`API returned non-OK status: ${res.status}`);
     }
+    return;
   } catch (apiErr) {
-    console.warn(
-      'API delete receipt failed, trying client SDK fallback:',
-      apiErr,
-    );
+    console.warn("API delete receipt failed, trying client SDK fallback:", apiErr);
   }
 
   if (!IS_FIREBASE_REAL || !db) return;
@@ -248,14 +212,11 @@ export async function deleteUserReceiptFromCloud(
 /**
  * Bulk Sync: Send unsynced local receipts to Cloud
  */
-export async function syncLocalReceiptsToCloud(
-  userId: string,
-  localReceipts: Receipt[],
-): Promise<Receipt[]> {
+export async function syncLocalReceiptsToCloud(userId: string, localReceipts: Receipt[]): Promise<Receipt[]> {
   // Deep copy and strip base64 image strings from all receipts to stay under 1MB Firestore limit
-  const cleanedReceipts = localReceipts.map((r) => {
+  const cleanedReceipts = localReceipts.map(r => {
     const clean = { ...r };
-    if (clean.imageUrl && clean.imageUrl.startsWith('data:')) {
+    if (clean.imageUrl && clean.imageUrl.startsWith("data:")) {
       delete clean.imageUrl;
     }
     return clean;
@@ -264,38 +225,39 @@ export async function syncLocalReceiptsToCloud(
   // Try calling our ultra-reliable backend REST bulk sync API first!
   try {
     const res = await fetch(`/api/users/${userId}/receipts/bulk-sync`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ receipts: cleanedReceipts }),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ receipts: cleanedReceipts })
     });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && Array.isArray(data.receipts)) {
-        return data.receipts;
-      }
+    if (!res.ok) {
+      throw new Error(`API returned non-OK status: ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.success && Array.isArray(data.receipts)) {
+      return data.receipts;
     }
   } catch (apiErr) {
-    console.warn('API bulk sync failed, trying client SDK fallback:', apiErr);
+    console.warn("API bulk sync failed, trying client SDK fallback:", apiErr);
   }
 
   if (!IS_FIREBASE_REAL || !db) return localReceipts;
-
+  
   try {
     // 1. Fetch current cloud state
     const cloudReceipts = await fetchUserReceipts(userId);
-    const cloudIds = new Set(cloudReceipts.map((r) => r.id));
-
+    const cloudIds = new Set(cloudReceipts.map(r => r.id));
+    
     // 2. Upload missing ones
     for (const local of localReceipts) {
       if (!cloudIds.has(local.id)) {
         await saveUserReceiptToCloud(userId, local);
       }
     }
-
+    
     // 3. Re-fetch final unified list
     return await fetchUserReceipts(userId);
   } catch (err) {
-    console.error('Erreur de synchronisation globale :', err);
+    console.error("Erreur de synchronisation globale :", err);
     return localReceipts;
   }
 }
@@ -303,37 +265,28 @@ export async function syncLocalReceiptsToCloud(
 /**
  * Save user custom premium subscription status in Firestore
  */
-export async function saveUserPremiumStatus(
-  userId: string,
-  isPremium: boolean,
-): Promise<void> {
+export async function saveUserPremiumStatus(userId: string, isPremium: boolean): Promise<void> {
   // Try calling our ultra-reliable backend REST proxy API first!
   try {
     const res = await fetch(`/api/users/${userId}/premium`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ isPremium }),
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isPremium })
     });
-    if (res.ok) {
-      console.log(
-        `[SmartReceipt API] Premium status updated to ${isPremium} via API for ${userId}`,
-      );
-      return;
+    if (!res.ok) {
+      throw new Error(`API returned non-OK status: ${res.status}`);
     }
+    console.log(`[SmartReceipt API] Premium status updated to ${isPremium} via API for ${userId}`);
+    return;
   } catch (apiErr) {
-    console.warn(
-      'API save premium failed, trying client SDK fallback:',
-      apiErr,
-    );
+    console.warn("API save premium failed, trying client SDK fallback:", apiErr);
   }
 
   if (!IS_FIREBASE_REAL || !db) return;
   const docPath = `users/${userId}`;
   try {
     await setDoc(doc(db, docPath), { isPremium }, { merge: true });
-    console.log(
-      `[SmartReceipt SDK] Premium status updated to ${isPremium} in Cloud for ${userId}`,
-    );
+    console.log(`[SmartReceipt SDK] Premium status updated to ${isPremium} in Cloud for ${userId}`);
   } catch (err) {
     console.warn("Erreur d'enregistrement premium sur Firestore :", err);
     throw err;
@@ -347,17 +300,15 @@ export async function fetchUserPremiumStatus(userId: string): Promise<boolean> {
   // Try calling our ultra-reliable backend REST proxy API first!
   try {
     const res = await fetch(`/api/users/${userId}/premium`);
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success) {
-        return !!data.isPremium;
-      }
+    if (!res.ok) {
+      throw new Error(`API returned non-OK status: ${res.status}`);
+    }
+    const data = await res.json();
+    if (data.success) {
+      return !!data.isPremium;
     }
   } catch (apiErr) {
-    console.warn(
-      'API fetch premium failed, trying client SDK fallback:',
-      apiErr,
-    );
+    console.warn("API fetch premium failed, trying client SDK fallback:", apiErr);
   }
 
   if (!IS_FIREBASE_REAL || !db) return false;
@@ -368,7 +319,7 @@ export async function fetchUserPremiumStatus(userId: string): Promise<boolean> {
       return !!docSnap.data()?.isPremium;
     }
   } catch (err) {
-    console.warn('Erreur de récupération premium depuis Firestore :', err);
+    console.warn("Erreur de récupération premium depuis Firestore :", err);
   }
   return false;
 }
